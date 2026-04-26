@@ -563,9 +563,12 @@ async function saveCotizacion() {
 
 // ── Supabase helpers ──
 async function sbFetch(path,method='GET',body) {
+  const prefer = method==='POST' && path.includes('on_conflict')
+    ? 'return=representation,resolution=merge-duplicates'
+    : 'return=representation';
   const res = await fetch(SB_URL+'/rest/v1/'+path,{
     method,
-    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':prefer},
     body:body?JSON.stringify(body):undefined
   });
   if(!res.ok){ const t=await res.text(); throw new Error(t); }
