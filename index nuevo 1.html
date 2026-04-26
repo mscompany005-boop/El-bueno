@@ -346,7 +346,38 @@ table.dtbl tr:last-child td{border-bottom:none}
     <div class="config-sub">Gratis en supabase.com → Settings → API</div>
     <input type="text" id="cfg-url" placeholder="Project URL: https://xxxx.supabase.co" oninput="saveCfg()">
     <input type="text" id="cfg-key" placeholder="anon public key" oninput="saveCfg()">
-    <button class="btn b-blue" style="margin:0" onclick="testConnection()">🔌 Conectar y crear tabla</button>
+    <button class="btn b-blue" style="margin:0" onclick="testConnection()">🔌 Conectar</button>
+  </div>
+
+  <div id="sql-hint" style="display:none;background:#fffbeb;border:1px solid #fbbf24;border-radius:10px;padding:14px;margin-bottom:12px;font-size:11px;color:#92400e">
+    <div style="font-weight:700;margin-bottom:8px">⚠️ Primero crea la tabla en Supabase</div>
+    <div style="margin-bottom:8px">Ve a tu proyecto Supabase → <strong>SQL Editor</strong> → pega y ejecuta esto:</div>
+    <textarea readonly id="sql-create" rows="14" style="width:100%;font-family:monospace;font-size:10px;background:#fef3c7;border:1px solid #fbbf24;border-radius:6px;padding:8px;resize:none;color:#78350f">CREATE TABLE IF NOT EXISTS cotizaciones (
+  id text PRIMARY KEY,
+  folio text,
+  fecha text,
+  cliente text,
+  contacto text,
+  proyecto text,
+  pieza text,
+  material text,
+  color text,
+  cantidad int DEFAULT 1,
+  gramos numeric DEFAULT 0,
+  diseno numeric DEFAULT 0,
+  acabado numeric DEFAULT 0,
+  envio numeric DEFAULT 0,
+  descuento numeric DEFAULT 0,
+  obs text,
+  total numeric DEFAULT 0,
+  precio_pza numeric DEFAULT 0,
+  subtotal_imp numeric DEFAULT 0,
+  status text DEFAULT 'pending',
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);</textarea>
+    <button class="btn b-gray" style="margin-top:8px;padding:8px;font-size:11px" onclick="navigator.clipboard.writeText(document.getElementById('sql-create').value).then(()=>alert('SQL copiado al portapapeles'))">📋 Copiar SQL</button>
+    <div style="margin-top:8px">Despues de ejecutarlo, regresa aqui y toca <strong>Conectar</strong> otra vez.</div>
   </div>
 
   <div class="fc">
@@ -557,33 +588,29 @@ async function testConnection() {
   SB_KEY = GS('cfg-key');
   if(!SB_URL||!SB_KEY){ alert('Pega los dos valores de Supabase.'); return; }
   try {
-    // Create table if not exists via RPC
-    const sql = `CREATE TABLE IF NOT EXISTS cotizaciones (
-      id text PRIMARY KEY,
-      folio text,fecha text,cliente text,contacto text,proyecto text,
-      pieza text,material text,color text,cantidad int,gramos numeric,
-      diseno numeric,acabado numeric,envio numeric,descuento numeric,obs text,
-      total numeric,precio_pza numeric,subtotal_imp numeric,
-      status text DEFAULT 'pending',
-      created_at timestamptz,updated_at timestamptz
-    );`;
-    await fetch(SB_URL+'/rest/v1/rpc/exec_sql',{
-      method:'POST',
-      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({sql})
+    const res = await fetch(SB_URL+'/rest/v1/cotizaciones?select=id&limit=1', {
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
     });
-    // Test read
-    await sbFetch('cotizaciones?select=id&limit=1');
+    if(!res.ok){
+      const err = await res.json().catch(()=>({}));
+      if(res.status===404||res.status===400||(err.code&&err.code==='42P01')){
+        alert('⚠️ La tabla "cotizaciones" no existe en tu Supabase.\n\nVe a Supabase → SQL Editor y ejecuta el SQL que aparece en la sección de Configuración.');
+        G('sql-hint').style.display='block';
+        return;
+      }
+      throw new Error((err.message||res.statusText));
+    }
     localStorage.setItem('sd_sb_url',SB_URL);
     localStorage.setItem('sd_sb_key',SB_KEY);
     G('db-connected').style.display='block';
-    alert('✅ Conectado a Supabase correctamente. Sincronizando...');
+    G('sql-hint') && (G('sql-hint').style.display='none');
+    alert('✅ Conectado correctamente. Sincronizando...');
     await syncFromSupabase();
   } catch(e){
-    alert('❌ Error de conexión: '+e.message+'
-
-Verifica que la URL y la key sean correctas.');
+    alert('❌ Error: '+e.message+'\n\nVerifica URL y key. Asegúrate de haber creado la tabla en Supabase SQL Editor.');
   }
+}
+
 }
 
 function saveCfg() {
