@@ -888,7 +888,7 @@ body::after{
 <div class="toast" id="toast"></div>
 
 <script>
-// ═══ CONFIG ═══
+// === CONFIG ===
 const CFG={
   filamentoPorKg:350,tarifaLuz:1.11,wattsImpresora:200,produccionGxH:15,
   costoImpresora:10370,vidaUtilH:5000,costoCama:415,cambioCamaH:1000,
@@ -911,7 +911,7 @@ let hasVoladizo=false,hasDiseno=false;
 let piezas=[],quoteData={};
 let refImgBase64=null,refImgName='';
 
-// ═══ FOLIO ═══
+// === FOLIO ===
 function genFolio(){
   const now=new Date();
   const y=now.getFullYear();
@@ -924,7 +924,7 @@ let currentFolio=genFolio();
 
 const MATS={'PLA':{density:1.24,priceKg:350},'PETG':{density:1.27,priceKg:400},'ASA':{density:1.07,priceKg:480},'TPU':{density:1.21,priceKg:550},'ABS':{density:1.06,priceKg:380},'Resina':{density:1.10,priceKg:700}};
 
-// ═══ BG PARTICLES ═══
+// === BG PARTICLES ===
 (function(){
   const cv=$('bg-canvas');
   const ctx=cv.getContext('2d');
@@ -951,7 +951,7 @@ const MATS={'PLA':{density:1.24,priceKg:350},'PETG':{density:1.27,priceKg:400},'
   frame();
 })();
 
-// ═══ PIEZAS ═══
+// === PIEZAS ===
 function calcGramos(vol){const mat=MATS[selectedMat]||MATS.PLA;return vol*mat.density*(1+CFG.desperdicio);}
 function totalGramsAll(){return piezas.reduce((s,p)=>s+(p.gramos||0)*(selectedTipo==='pedido'?1:(p.qty||1)),0);}
 
@@ -970,8 +970,8 @@ function renderPiezas(){
     const div=document.createElement('div');
     div.className='pieza-card';div.id='pc-'+p.id;
     const stlEl=p.stlName
-      ?`<div class="stl-viewer-wrap" id="vw-${p.id}"><canvas id="vc-${p.id}"></canvas><div class="stl-viewer-badge" id="vb-${p.id}">—</div><div class="stl-viewer-stats" id="vs-${p.id}">${p.gramos.toFixed(1)}g · ${p.volCm3?p.volCm3.toFixed(2)+' cm³':p.fileType==='step'?'Archivo STEP':''}</div></div><div class="stl-loaded"><span style="font-size:16px">${p.fileType==='step'?'🔩':'📦'}</span><span class="stl-loaded-name">${p.stlName}</span><span style="font-size:10px;color:var(--text3);margin-left:4px">${p.fileType==='step'?'STEP — sin visor 3D':''}</span><button class="stl-loaded-del" onclick="clearPiezaSTL('${p.id}')">✕ Quitar</button></div>`
-      :`<div class="stl-dropzone" id="dz-${p.id}"><input type="file" accept=".stl,.STL,.step,.STEP,.stp,.STP" id="si-${p.id}" onchange="handlePiezaFile('${p.id}',this)"><div class="stl-dz-icon">📁</div><div class="stl-dz-label">Subir archivo 3D</div><div class="stl-dz-sub">STL o STEP · opcional · arrastra o toca aquí</div></div>`;
+      ?`<div class="stl-viewer-wrap" id="vw-${p.id}"><canvas id="vc-${p.id}"></canvas><div class="stl-viewer-badge" id="vb-${p.id}">-</div><div class="stl-viewer-stats" id="vs-${p.id}">${p.gramos.toFixed(1)}g . ${p.volCm3?p.volCm3.toFixed(2)+' cm3':p.fileType==='step'?'Archivo STEP':''}</div></div><div class="stl-loaded"><span style="font-size:16px">${p.fileType==='step'?'🔩':'📦'}</span><span class="stl-loaded-name">${p.stlName}</span><span style="font-size:10px;color:var(--text3);margin-left:4px">${p.fileType==='step'?'STEP - sin visor 3D':''}</span><button class="stl-loaded-del" onclick="clearPiezaSTL('${p.id}')">✕ Quitar</button></div>`
+      :`<div class="stl-dropzone" id="dz-${p.id}"><input type="file" accept=".stl,.STL,.step,.STEP,.stp,.STP" id="si-${p.id}" onchange="handlePiezaFile('${p.id}',this)"><div class="stl-dz-icon">📁</div><div class="stl-dz-label">Subir archivo 3D</div><div class="stl-dz-sub">STL o STEP . opcional . arrastra o toca aquí</div></div>`;
     div.innerHTML=`
       <div class="pieza-card-header">
         <span class="pieza-num">Pieza ${i+1}${p.nombre?' / '+p.nombre:''}</span>
@@ -1016,7 +1016,7 @@ function processFileForPieza(id,file){
   const isSTEP=name.endsWith('.step')||name.endsWith('.stp');
   if(!isSTL&&!isSTEP){showToast('⚠️ Solo archivos STL o STEP');return;}
   const p=piezas.find(x=>x.id===id);if(!p)return;
-  showToast('⏳ Leyendo '+file.name+'…');
+  showToast('⏳ Leyendo '+file.name+'...');
   const reader=new FileReader();
   reader.onload=e=>{
     try{
@@ -1024,21 +1024,21 @@ function processFileForPieza(id,file){
       p.stlName=file.name; p.fileBuf=buf;
       if(isSTL){
         p.fileType='stl';
-        const rawVol=parseSTL(buf); // raw unit³ value
+        const rawVol=parseSTL(buf); // raw unit3 value
         p.volCm3Raw=rawVol;
         p.unit='mm'; // default: assume mm
-        const factor=0.001; // mm³ to cm³
+        const factor=0.001; // mm3 to cm3
         p.volCm3=rawVol*factor;
         p.gramos=calcGramos(p.volCm3);
         if(!p.nombre)p.nombre=file.name.replace(/\.stl$/i,'');
         renderPiezas(); checkColorLock();
-        showToast('✅ '+file.name+' — '+p.volCm3.toFixed(2)+' cm³ · '+p.gramos.toFixed(1)+'g (asumiendo mm)');
+        showToast('✅ '+file.name+' - '+p.volCm3.toFixed(2)+' cm3 . '+p.gramos.toFixed(1)+'g (asumiendo mm)');
       } else {
-        // STEP file — no geometry parse, show as uploaded
+        // STEP file - no geometry parse, show as uploaded
         p.fileType='step'; p.volCm3=null;
         if(!p.nombre)p.nombre=file.name.replace(/\.(step|stp)$/i,'');
         renderPiezas(); checkColorLock();
-        showToast('✅ '+file.name+' (STEP) — ingresa el peso manualmente');
+        showToast('✅ '+file.name+' (STEP) - ingresa el peso manualmente');
       }
     }catch(err){showToast('❌ Error al leer archivo');}
   };
@@ -1049,13 +1049,13 @@ function changeUnit(id, unit){
   const p=piezas.find(x=>x.id===id); if(!p||!p.fileBuf||!p.volCm3Raw) return;
   p.unit=unit;
   // Recalculate volume based on unit
-  // STL is unitless — user tells us the unit
-  // 1 mm³ = 0.001 cm³, 1 in³ = 16.387 cm³
+  // STL is unitless - user tells us the unit
+  // 1 mm3 = 0.001 cm3, 1 in3 = 16.387 cm3
   const factor = unit==='mm'? 0.001 : unit==='cm'? 1 : unit==='in'? 16.387 : 0.001;
   p.volCm3 = p.volCm3Raw * factor;
   p.gramos = calcGramos(p.volCm3);
   renderPiezas(); checkColorLock();
-  showToast('✅ Actualizado en '+unit+' — '+p.gramos.toFixed(1)+'g');
+  showToast('✅ Actualizado en '+unit+' - '+p.gramos.toFixed(1)+'g');
 }
 
 function clearPiezaSTL(id){
@@ -1109,7 +1109,7 @@ function launchPiezaViewer(id, buf, volCm3){
   camera.position.set(maxD*1.6,maxD*1.1,maxD*1.6);
   camera.lookAt(0,0,0);
 
-  if(badge) badge.textContent=`${size.x.toFixed(0)}×${size.y.toFixed(0)}×${size.z.toFixed(0)} mm`;
+  if(badge) badge.textContent=`${size.x.toFixed(0)}x${size.y.toFixed(0)}x${size.z.toFixed(0)} mm`;
 
   // Wireframe overlay
   const wf=new THREE.LineSegments(
@@ -1133,14 +1133,14 @@ function launchPiezaViewer(id, buf, volCm3){
   animate();
 }
 
-// ═══ COLOR LOCK ═══
+// === COLOR LOCK ===
 function checkColorLock(){
   const unlock=totalGramsAll()>=600;
   document.querySelectorAll('#color-grid .color-chip').forEach(c=>c.classList.toggle('locked',!unlock));
   $('color-note').style.display=unlock?'none':'block';
 }
 
-// ═══ CHIPS ═══
+// === CHIPS ===
 function selMat(el){
   document.querySelectorAll('#mat-grid .mat-card').forEach(c=>c.classList.remove('sel'));
   el.classList.add('sel');selectedMat=el.dataset.mat;
@@ -1190,7 +1190,7 @@ function getCharges(){
   }));
 }
 
-// Returns raw volume in the STL's native units³ (could be mm³, cm³, inches³ — unknown until user tells us)
+// Returns raw volume in the STL's native units3 (could be mm3, cm3, inches3 - unknown until user tells us)
 function parseSTL(buffer){
   const view=new DataView(buffer);let vol=0;
   if(buffer.byteLength>84){
@@ -1205,10 +1205,10 @@ function parseSTL(buffer){
       }
     }
   }
-  return Math.max(Math.abs(vol), 0.001); // raw units³
+  return Math.max(Math.abs(vol), 0.001); // raw units3
 }
 
-// ═══ IMAGE REF ═══
+// === IMAGE REF ===
 function handleRefImg(inp){
   if(!inp.files[0])return;
   refImgName=inp.files[0].name;
@@ -1228,7 +1228,7 @@ function clearRefImg(){
   $('ref-input').value='';
 }
 
-// ═══ NAV ═══
+// === NAV ===
 function goStep1(){
   $('sec1').style.display='';$('sec2').style.display='none';$('sec3').style.display='none';
   setTracker(1);window.scrollTo({top:0,behavior:'smooth'});
@@ -1261,7 +1261,7 @@ function setTracker(n){
   });
 }
 
-// ═══ CALC ═══
+// === CALC ===
 function calcApprox(){
   const mat=MATS[selectedMat]||MATS.PLA;
   const cG=(mat.priceKg/1000)+elecG+camaG+desgG;
@@ -1281,7 +1281,7 @@ function calcAndRender(){
   piezas.forEach((p,i)=>{
     const g=p.gramos||0;const qty=selectedTipo==='pedido'?1:(p.qty||1);
     const pPza=Math.max(g*pG,CFG.minimo);const subP=pPza*qty;
-    if(selectedTipo!=='pedido'){subtotalPiezas+=subP;rows+=`<div class="result-row"><span class="lbl">📦 ${p.nombre||'Pieza '+(i+1)} ×${qty}</span><span class="val ac">${fm(subP)}</span></div>`;}
+    if(selectedTipo!=='pedido'){subtotalPiezas+=subP;rows+=`<div class="result-row"><span class="lbl">📦 ${p.nombre||'Pieza '+(i+1)} x${qty}</span><span class="val ac">${fm(subP)}</span></div>`;}
     totalGramos+=g*qty;
   });
   if(selectedTipo==='pedido'){subtotalPiezas=Math.max(totalGramos*pG,CFG.minimo);rows=`<div class="result-row"><span class="lbl">📦 Pedido completo (${piezas.length} pza${piezas.length>1?'s':''})</span><span class="val ac">${fm(subtotalPiezas)}</span></div>`;}
@@ -1296,7 +1296,7 @@ function calcAndRender(){
   // Animate total
   $('r-total').textContent=fm(total);
   if($('r-folio')) $('r-folio').textContent='FOLIO: '+currentFolio;
-  $('r-sub').textContent=`${selectedMat} · ${selectedColor} · ${totalGramos.toFixed(1)}g total`;
+  $('r-sub').textContent=`${selectedMat} . ${selectedColor} . ${totalGramos.toFixed(1)}g total`;
   rows+=`<div class="result-row total-row"><span class="lbl">💰 TOTAL ESTIMADO</span><span class="val">${fm(total)}</span></div>`;
   $('result-rows').innerHTML=rows;
   const pzaPrice=total/Math.max(piezas.reduce((s,p)=>s+(selectedTipo==='pedido'?1:(p.qty||1)),0),1);
@@ -1307,8 +1307,8 @@ function calcAndRender(){
   `;
 }
 
-// ═══ SEND WA ═══
-// ═══ SAVE TO SUPABASE ═══
+// === SEND WA ===
+// === SAVE TO SUPABASE ===
 const SB_URL='https://sdqwlahtnkypehpmoqaa.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNkcXdsYWh0bmt5cGVocG1vcWFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMjQ3MDcsImV4cCI6MjA5MjgwMDcwN30.qI6vj1ZM8qXt2Dq9mu8m0GK_BWUWs3Zr0E_0Spgedkc';
 
@@ -1357,8 +1357,8 @@ async function savePedido(){
 function sendWA(){
   const q=quoteData;if(!q.total){showToast('Genera la cotización primero');return;}
   savePedido();
-  const pts=q.piezas.map((p,i)=>`  • ${p.nombre||'Pieza '+(i+1)}: ${q.tipo==='pedido'?1:p.qty} pza · ${p.gramos.toFixed(1)}g`).join('\n');
-  const cgs=q.charges.length?q.charges.map(c=>`  • ${c.label}`).join('\n'):'  Ninguno';
+  const pts=q.piezas.map((p,i)=>`  * ${p.nombre||'Pieza '+(i+1)}: ${q.tipo==='pedido'?1:p.qty} pza . ${p.gramos.toFixed(1)}g`).join('\n');
+  const cgs=q.charges.length?q.charges.map(c=>`  * ${c.label}`).join('\n'):'  Ninguno';
   const msg=`🦅 *SkyDove 3D LAB*\n*Folio: ${currentFolio}*\n\nHola Martín, soy *${q.nombre}* y quiero mandar a imprimir este pedido:\n\n📦 *Piezas:*\n${pts}\n\n🧱 *Material:* ${q.mat}  🎨 *Color:* ${q.color}\n🗂️ *Tipo:* ${q.tipo==='individual'?'Por pieza':'Pedido completo'}\n\n🔧 *Extras seleccionados:*\n${cgs}\n🚚 *Envío:* ${q.envioLabel}${q.email?'\n📧 '+q.email:''}${q.proyecto?'\n📝 '+q.proyecto:''}\n\n💵 *Total estimado: ${fm(q.total)} MXN*\n\n_Ya vi las condiciones y quedo en espera de la cotización confirmada._`;
   window.open(`https://wa.me/${CFG.waNumber}?text=${encodeURIComponent(msg)}`,'_blank');
 }
@@ -1366,10 +1366,10 @@ function sendWAVoladizo(){
   savePedido();
   const nombre=$('c-nombre').value.trim()||'Cliente';
   const email=$('c-email').value.trim(),proyecto=$('c-proyecto').value.trim();
-  const pts=piezas.map((p,i)=>`  • ${p.nombre||'Pieza '+(i+1)}: ${p.gramos.toFixed(1)}g${p.stlName?' ('+p.stlName+')':''}`).join('\n');
-  const msg=`🦅 *SkyDove 3D LAB*\n*Folio: ${currentFolio}*\n\nHola Martín, soy *${nombre}* y quiero mandar a imprimir este pedido:\n\n⚠️ *Mi pieza tiene voladizos — necesito cotización con soportes*\n\n📦 *Piezas:*\n${pts}\n🧱 *Material:* ${selectedMat}  🎨 *Color:* ${selectedColor}${email?'\n📧 '+email:''}${proyecto?'\n📝 '+proyecto:''}\n\n${calcApprox()}\n\n_Ya vi las condiciones y quedo en espera de la cotización con soportes._`;
+  const pts=piezas.map((p,i)=>`  * ${p.nombre||'Pieza '+(i+1)}: ${p.gramos.toFixed(1)}g${p.stlName?' ('+p.stlName+')':''}`).join('\n');
+  const msg=`🦅 *SkyDove 3D LAB*\n*Folio: ${currentFolio}*\n\nHola Martín, soy *${nombre}* y quiero mandar a imprimir este pedido:\n\n⚠️ *Mi pieza tiene voladizos - necesito cotización con soportes*\n\n📦 *Piezas:*\n${pts}\n🧱 *Material:* ${selectedMat}  🎨 *Color:* ${selectedColor}${email?'\n📧 '+email:''}${proyecto?'\n📝 '+proyecto:''}\n\n${calcApprox()}\n\n_Ya vi las condiciones y quedo en espera de la cotización con soportes._`;
   window.open(`https://wa.me/${CFG.waNumber}?text=${encodeURIComponent(msg)}`,'_blank');
-  showToast('✅ Solicitud enviada — te contactamos pronto');
+  showToast('✅ Solicitud enviada - te contactamos pronto');
 }
 function sendWADiseno(){
   savePedido();
@@ -1378,14 +1378,14 @@ function sendWADiseno(){
   const desc=$('diseno-desc').value.trim();
   const mw=$('med-w').value,mh=$('med-h').value,ml=$('med-l').value;
   const medidas=(mw||mh||ml)?`\n📐 *Medidas:* ${mw?'A:'+mw+'mm ':''}${mh?'H:'+mh+'mm ':''}${ml?'L:'+ml+'mm ':''}`:''
-  const pts=piezas.map((p,i)=>`  • ${p.nombre||'Pieza '+(i+1)}`).join('\n');
+  const pts=piezas.map((p,i)=>`  * ${p.nombre||'Pieza '+(i+1)}`).join('\n');
   const msg=`🦅 *SkyDove 3D LAB*\n*Folio: ${currentFolio}*\n\nHola Martín, soy *${nombre}* y quiero mandar a imprimir este pedido:\n\n🖥️ *Necesito también el modelado / diseño 3D*\n📦 *Piezas:*\n${pts}${medidas}${desc?'\n📝 '+desc:''}\n🧱 *Material deseado:* ${selectedMat}${email?'\n📧 '+email:''}\n\n${refImgBase64?'📸 *Imagen de referencia en el siguiente mensaje*':'⚠️ Sin imagen de referencia'}\n\n_Ya vi las condiciones y quedo en espera de la cotización de modelado._`;
   window.open(`https://wa.me/${CFG.waNumber}?text=${encodeURIComponent(msg)}`,'_blank');
   if(refImgBase64)setTimeout(()=>showToast('📸 Envía también la imagen de referencia en WhatsApp'),1500);
   showToast('✅ Solicitud enviada');
 }
 
-// ═══ PDF ═══
+// === PDF ===
 async function sendPDF(){
   const q=quoteData;if(!q.total){showToast('Genera la cotización primero');return;}
   const btn=$('btn-pdf');btn.textContent='⏳ Generando...';btn.disabled=true;
@@ -1412,7 +1412,7 @@ async function sendPDF(){
     // Client
     rect(0,y,W,56,'#06060f');rect(0,y,3,56,'#2979ff');
     txt('CLIENTE',14,y+8,'#5a5a80',9,true,null,null);
-    txt(q.nombre||'—',14,y+22,'#f0f0fa',14,true);
+    txt(q.nombre||'-',14,y+22,'#f0f0fa',14,true);
     if(q.wa)txt('📱 '+q.wa,14,y+40,'#7070a0',10,false);
     if(q.email)txt('📧 '+q.email,(q.wa?170:14),y+40,'#7070a0',10,false);
     if(q.proyecto)txt(q.proyecto,W-14,y+22,'#a0a0c0',11,false,'right',280);
@@ -1443,11 +1443,11 @@ async function sendPDF(){
     line(0,y,W,y,'#00f5c440');
     txt('TOTAL ESTIMADO',14,y+8,'#7070a0',9,true);
     txt(fm(q.total)+' MXN',W-14,y+8,'#00f5c4',22,true,'right');
-    txt('IVA no incluido · Estimación automática · Válido 24h',14,y+32,'#3a3a60',9,false);
+    txt('IVA no incluido . Estimación automática . Válido 24h',14,y+32,'#3a3a60',9,false);
     y+=50;
     // Footer
     rect(0,y,W,30,'#06060f');
-    txt('SkyDove 3D LAB · Impresión 3D Profesional · Querétaro, México',W/2,y+10,'#3a3a60',9,false,'center');
+    txt('SkyDove 3D LAB . Impresión 3D Profesional . Querétaro, México',W/2,y+10,'#3a3a60',9,false,'center');
     y+=30;
     const fH=y*2;const fc=document.createElement('canvas');fc.width=W*2;fc.height=fH;fc.getContext('2d').drawImage(cv,0,0);
     const imgData=fc.toDataURL('image/png');
