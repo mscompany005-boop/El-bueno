@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>SkyDove 3D LAB — Cotizador</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"> </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"> </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">  </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js">  </script>
 <style>
 /* ═══════════════════════════════════════════
    RESET & ROOT
@@ -969,9 +969,13 @@ function renderPiezas(){
   piezas.forEach((p,i)=>{
     const div=document.createElement('div');
     div.className='pieza-card';div.id='pc-'+p.id;
-    const stlEl=p.stlName
-      ?`<div class="stl-viewer-wrap" id="vw-${p.id}"><canvas id="vc-${p.id}"></canvas><div class="stl-viewer-badge" id="vb-${p.id}">-</div><div class="stl-viewer-stats" id="vs-${p.id}">${p.gramos>0?p.gramos.toFixed(1)+'g':'calculando...'} . ${p.volCm3&&p.volCm3>0?p.volCm3.toFixed(2)+' cm3':'...'}</div></div><div class="stl-loaded"><span style="font-size:16px">${p.fileType==='step'?'🔩':'📦'}</span><span class="stl-loaded-name">${p.stlName}</span><span style="font-size:10px;color:var(--text3);margin-left:4px">${p.fileType==='step'?'STEP - sin visor 3D':''}</span><button class="stl-loaded-del" onclick="clearPiezaSTL('${p.id}')">✕ Quitar</button></div>`
-      :`<div class="stl-dropzone" id="dz-${p.id}"><input type="file" accept=".stl,.STL,.step,.STEP,.stp,.STP" id="si-${p.id}" onchange="handlePiezaFile('${p.id}',this)"><div class="stl-dz-icon">📁</div><div class="stl-dz-label">Subir archivo 3D</div><div class="stl-dz-sub">STL o STEP . opcional . arrastra o toca aquí</div></div>`;
+    const vwId='vw-'+p.id, vcId='vc-'+p.id, vbId='vb-'+p.id, vsId='vs-'+p.id;
+    const statsHtml=(p.gramos>0?p.gramos.toFixed(1)+'g':'...') +' . '+(p.volCm3&&p.volCm3>0?p.volCm3.toFixed(2)+' cm3':'...');
+    const viewerHtml=p.fileType==='step'
+      ?'<div style="display:flex;align-items:center;gap:14px;background:var(--deep);border:1px solid #2979ff30;border-radius:12px;padding:16px;margin-bottom:10px"><span style="font-size:36px">🔩</span><div><div style="font-size:13px;font-weight:700;color:#93c5fd;margin-bottom:4px">Archivo STEP cargado</div><div style="font-size:11px;color:var(--text3)">Sin visor 3D - ingresa el peso manualmente</div></div></div>'
+      :'<div class="stl-viewer-wrap" id="'+vwId+'"><canvas id="'+vcId+'"></canvas><div class="stl-viewer-badge" id="'+vbId+'">-</div><div class="stl-viewer-stats" id="'+vsId+'">'+statsHtml+'</div></div>';
+    const loadedHtml='<div class="stl-loaded"><span style="font-size:16px">'+(p.fileType==='step'?'🔩':'📦')+'</span><span class="stl-loaded-name">'+p.stlName+'</span><button class="stl-loaded-del" onclick="clearPiezaSTL(\''+p.id+'\')">✕ Quitar</button></div>';
+    const stlEl=p.stlName ? viewerHtml+loadedHtml : '<div class="stl-dropzone" id="dz-'+p.id+'"><input type="file" accept=".stl,.STL,.step,.STEP,.stp,.STP" id="si-'+p.id+'" onchange="handlePiezaFile(\''+p.id+'\',this)"><div class="stl-dz-icon">📁</div><div class="stl-dz-label">Subir archivo 3D</div><div class="stl-dz-sub">STL o STEP - arrastra o toca aquí</div></div>';
     div.innerHTML=`
       <div class="pieza-card-header">
         <span class="pieza-num">Pieza ${i+1}${p.nombre?' / '+p.nombre:''}</span>
@@ -984,7 +988,7 @@ function renderPiezas(){
       </div>
       ${!p.stlName?'<div class="field"><div class="field-label">Peso estimado <span class="field-label-tag">si lo sabes</span></div><input type="number" value="'+(p.gramos||'')+'" min="0" step="0.5" placeholder="gramos por pieza" oninput="updateP(\''+p.id+'\',\'gramos\',parseFloat(this.value)||0)"></div>'
       : p.fileType==='step'?'<div class="field"><div class="field-label">Peso estimado (g/pza) <span class="field-label-tag">requerido para STEP</span></div><input type="number" value="'+(p.gramos||'')+'" min="0" step="0.5" placeholder="ej. 25.5" oninput="updateP(\''+p.id+'\',\'gramos\',parseFloat(this.value)||0)"></div>'
-      : p.volCm3?'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;background:var(--deep);border-radius:8px;padding:8px 12px;border:1px solid var(--border)"><span style="font-size:11px;color:var(--text3);flex:1">Unidades del STL:</span><select style="background:var(--deep);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:11px;padding:4px 8px;outline:none" onchange="changeUnit(\''+p.id+'\',this.value)"><option value="mm" '+(p.unit==='mm'||!p.unit?'selected':'')+'>mm (milímetros)</option><option value="cm" '+(p.unit==='cm'?'selected':'')+'>cm (centímetros)</option><option value="in" '+(p.unit==='in'?'selected':'')+'>in (pulgadas)</option></select></div>':''}
+      : p.volCm3?'<div style="display:inline-flex;align-items:center;gap:6px;background:#00f5c410;border:1px solid #00f5c430;border-radius:8px;padding:5px 12px;font-size:11px;font-family:var(--font-mono);color:var(--cyan);margin-bottom:8px">📐 Unidades detectadas: <strong>'+(p.unit==='mm'?'Milímetros (mm)':p.unit==='cm'?'Centímetros (cm)':'Pulgadas (in)')+'</strong></div>':''}
     `;
     list.appendChild(div);
     if(!p.stlName){
@@ -1520,6 +1524,6 @@ function showToast(msg){
 
 // Init
 addPieza();
- </script>
+  </script>
 </body>
 </html>
