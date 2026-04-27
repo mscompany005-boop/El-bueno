@@ -982,9 +982,9 @@ function renderPiezas(){
         <div class="field"><div class="field-label">Nombre / descripción</div><input type="text" value="${p.nombre||''}" placeholder="ej. Soporte lateral" oninput="updateP('${p.id}','nombre',this.value)"></div>
         <div class="field"><div class="field-label">Cantidad${isPedido?' <span class="field-label-tag">Pedido: 1</span>':''}</div><input type="number" value="${isPedido?1:p.qty}" min="1" ${isPedido?'disabled':''} oninput="updateP('${p.id}','qty',parseInt(this.value)||1)"></div>
       </div>
-      ${!p.stlName?`<div class="field"><div class="field-label">Peso estimado <span class="field-label-tag">si lo sabes</span></div><input type="number" value="${p.gramos||''}" min="0" step="0.5" placeholder="gramos por pieza" oninput="updateP('${p.id}','gramos',parseFloat(this.value)||0)"></div>`
-      : p.fileType==='step'?`<div class="field"><div class="field-label">Peso estimado (g/pza) <span class="field-label-tag">requerido para STEP</span></div><input type="number" value="${p.gramos||''}" min="0" step="0.5" placeholder="ej. 25.5" oninput="updateP('${p.id}','gramos',parseFloat(this.value)||0)"></div>`
-      : p.volCm3?`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;background:var(--deep);border-radius:8px;padding:8px 12px;border:1px solid var(--border)"><span style="font-size:11px;color:var(--text3);flex:1">Unidades del STL:</span><select style="background:var(--deep);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:11px;padding:4px 8px;outline:none" onchange="changeUnit('${p.id}',this.value)"><option value="mm" ${(p.unit||'mm')==='mm'?'selected':''}>Milímetros (mm)</option><option value="cm" ${p.unit==='cm'?'selected':''}>Centímetros (cm)</option><option value="in" ${p.unit==='in'?'selected':''}>Pulgadas (in)</option></select></div>`:''}
+      ${!p.stlName?'<div class="field"><div class="field-label">Peso estimado <span class="field-label-tag">si lo sabes</span></div><input type="number" value="'+(p.gramos||'')+'" min="0" step="0.5" placeholder="gramos por pieza" oninput="updateP(\''+p.id+'\',\'gramos\',parseFloat(this.value)||0)"></div>'
+      : p.fileType==='step'?'<div class="field"><div class="field-label">Peso estimado (g/pza) <span class="field-label-tag">requerido para STEP</span></div><input type="number" value="'+(p.gramos||'')+'" min="0" step="0.5" placeholder="ej. 25.5" oninput="updateP(\''+p.id+'\',\'gramos\',parseFloat(this.value)||0)"></div>'
+      : p.volCm3?'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;background:var(--deep);border-radius:8px;padding:8px 12px;border:1px solid var(--border)"><span style="font-size:11px;color:var(--text3);flex:1">Unidades del STL:</span><select style="background:var(--deep);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:11px;padding:4px 8px;outline:none" onchange="changeUnit(\''+p.id+'\',this.value)"><option value="mm" '+(p.unit==='mm'||!p.unit?'selected':'')+'>mm (milímetros)</option><option value="cm" '+(p.unit==='cm'?'selected':'')+'>cm (centímetros)</option><option value="in" '+(p.unit==='in'?'selected':'')+'>in (pulgadas)</option></select></div>':''}
     `;
     list.appendChild(div);
     if(!p.stlName){
@@ -1057,6 +1057,8 @@ function changeUnit(id, unit){
   renderPiezas(); checkColorLock();
   showToast('✅ Actualizado en '+unit+' — '+p.gramos.toFixed(1)+'g');
 }
+
+function clearPiezaSTL(id){
   const p=piezas.find(x=>x.id===id);if(!p)return;
   p.stlName='';p.volCm3=null;p.gramos=0;p.fileBuf=null;p.fileType='';renderPiezas();checkColorLock();
 }
