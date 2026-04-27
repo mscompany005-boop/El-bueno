@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>SkyDove 3D LAB — Cotizador</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"> </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"> </script>
 <style>
 /* ═══════════════════════════════════════════
    RESET & ROOT
@@ -970,7 +970,7 @@ function renderPiezas(){
     const div=document.createElement('div');
     div.className='pieza-card';div.id='pc-'+p.id;
     const stlEl=p.stlName
-      ?`<div class="stl-viewer-wrap" id="vw-${p.id}"><canvas id="vc-${p.id}"></canvas><div class="stl-viewer-badge" id="vb-${p.id}">-</div><div class="stl-viewer-stats" id="vs-${p.id}">${p.gramos.toFixed(1)}g . ${p.volCm3?p.volCm3.toFixed(2)+' cm3':p.fileType==='step'?'Archivo STEP':''}</div></div><div class="stl-loaded"><span style="font-size:16px">${p.fileType==='step'?'🔩':'📦'}</span><span class="stl-loaded-name">${p.stlName}</span><span style="font-size:10px;color:var(--text3);margin-left:4px">${p.fileType==='step'?'STEP - sin visor 3D':''}</span><button class="stl-loaded-del" onclick="clearPiezaSTL('${p.id}')">✕ Quitar</button></div>`
+      ?`<div class="stl-viewer-wrap" id="vw-${p.id}"><canvas id="vc-${p.id}"></canvas><div class="stl-viewer-badge" id="vb-${p.id}">-</div><div class="stl-viewer-stats" id="vs-${p.id}">${p.gramos>0?p.gramos.toFixed(1)+'g':'calculando...'} . ${p.volCm3&&p.volCm3>0?p.volCm3.toFixed(2)+' cm3':'...'}</div></div><div class="stl-loaded"><span style="font-size:16px">${p.fileType==='step'?'🔩':'📦'}</span><span class="stl-loaded-name">${p.stlName}</span><span style="font-size:10px;color:var(--text3);margin-left:4px">${p.fileType==='step'?'STEP - sin visor 3D':''}</span><button class="stl-loaded-del" onclick="clearPiezaSTL('${p.id}')">✕ Quitar</button></div>`
       :`<div class="stl-dropzone" id="dz-${p.id}"><input type="file" accept=".stl,.STL,.step,.STEP,.stp,.STP" id="si-${p.id}" onchange="handlePiezaFile('${p.id}',this)"><div class="stl-dz-icon">📁</div><div class="stl-dz-label">Subir archivo 3D</div><div class="stl-dz-sub">STL o STEP . opcional . arrastra o toca aquí</div></div>`;
     div.innerHTML=`
       <div class="pieza-card-header">
@@ -1024,15 +1024,23 @@ function processFileForPieza(id,file){
       p.stlName=file.name; p.fileBuf=buf;
       if(isSTL){
         p.fileType='stl';
-        const rawVol=parseSTL(buf); // raw unit3 value
-        p.volCm3Raw=rawVol;
-        p.unit='mm'; // default: assume mm
-        const factor=0.001; // mm3 to cm3
-        p.volCm3=rawVol*factor;
+        const parsed=parseSTLFull(buf);
+        p.volCm3Raw=parsed.vol;
+        p.bbox={
+          x:Math.abs(parsed.maxX-parsed.minX),
+          y:Math.abs(parsed.maxY-parsed.minY),
+          z:Math.abs(parsed.maxZ-parsed.minZ)
+        };
+        // Autodetect unit from bounding box max dimension
+        const maxDim=Math.max(p.bbox.x, p.bbox.y, p.bbox.z);
+        const detectedUnit=autoDetectUnit(maxDim);
+        p.unit=detectedUnit;
+        p.volCm3=parsed.vol * unitToCm3Factor(detectedUnit);
         p.gramos=calcGramos(p.volCm3);
         if(!p.nombre)p.nombre=file.name.replace(/\.stl$/i,'');
         renderPiezas(); checkColorLock();
-        showToast('✅ '+file.name+' - '+p.volCm3.toFixed(2)+' cm3 . '+p.gramos.toFixed(1)+'g (asumiendo mm)');
+        const unitLabel=detectedUnit==='mm'?'mm':detectedUnit==='in'?'pulgadas':'cm';
+        showToast('✅ '+file.name+' - '+p.volCm3.toFixed(2)+' cm3 . '+p.gramos.toFixed(1)+'g (auto: '+unitLabel+')');
       } else {
         // STEP file - no geometry parse, show as uploaded
         p.fileType='step'; p.volCm3=null;
@@ -1048,14 +1056,10 @@ function processFileForPieza(id,file){
 function changeUnit(id, unit){
   const p=piezas.find(x=>x.id===id); if(!p||!p.fileBuf||!p.volCm3Raw) return;
   p.unit=unit;
-  // Recalculate volume based on unit
-  // STL is unitless - user tells us the unit
-  // 1 mm3 = 0.001 cm3, 1 in3 = 16.387 cm3
-  const factor = unit==='mm'? 0.001 : unit==='cm'? 1 : unit==='in'? 16.387 : 0.001;
-  p.volCm3 = p.volCm3Raw * factor;
+  p.volCm3 = p.volCm3Raw * unitToCm3Factor(unit);
   p.gramos = calcGramos(p.volCm3);
   renderPiezas(); checkColorLock();
-  showToast('✅ Actualizado en '+unit+' - '+p.gramos.toFixed(1)+'g');
+  showToast('Recalculado en '+unit+' - '+p.gramos.toFixed(1)+'g');
 }
 
 function clearPiezaSTL(id){
@@ -1109,7 +1113,10 @@ function launchPiezaViewer(id, buf, volCm3){
   camera.position.set(maxD*1.6,maxD*1.1,maxD*1.6);
   camera.lookAt(0,0,0);
 
-  if(badge) badge.textContent=`${size.x.toFixed(0)}x${size.y.toFixed(0)}x${size.z.toFixed(0)} mm`;
+  // Find the pieza to get its unit
+  const pz=piezas.find(x=>x.id===id);
+  const unit=pz?pz.unit||'mm':'mm';
+  if(badge) badge.textContent=`${size.x.toFixed(0)}x${size.y.toFixed(0)}x${size.z.toFixed(0)} ${unit}`;
 
   // Wireframe overlay
   const wf=new THREE.LineSegments(
@@ -1191,8 +1198,11 @@ function getCharges(){
 }
 
 // Returns raw volume in the STL's native units3 (could be mm3, cm3, inches3 - unknown until user tells us)
-function parseSTL(buffer){
-  const view=new DataView(buffer);let vol=0;
+// Returns {vol, minX,maxX,minY,maxY,minZ,maxZ} in STL native units
+function parseSTLFull(buffer){
+  const view=new DataView(buffer);
+  let vol=0;
+  let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity,minZ=Infinity,maxZ=-Infinity;
   if(buffer.byteLength>84){
     const nTri=view.getUint32(80,true);
     if(84+nTri*50<=buffer.byteLength){
@@ -1202,10 +1212,32 @@ function parseSTL(buffer){
         const v2x=view.getFloat32(o+12,true),v2y=view.getFloat32(o+16,true),v2z=view.getFloat32(o+20,true);
         const v3x=view.getFloat32(o+24,true),v3y=view.getFloat32(o+28,true),v3z=view.getFloat32(o+32,true);
         vol+=(v1x*(v2y*v3z-v2z*v3y)-v1y*(v2x*v3z-v2z*v3x)+v1z*(v2x*v3y-v2y*v3x))/6;
+        minX=Math.min(minX,v1x,v2x,v3x); maxX=Math.max(maxX,v1x,v2x,v3x);
+        minY=Math.min(minY,v1y,v2y,v3y); maxY=Math.max(maxY,v1y,v2y,v3y);
+        minZ=Math.min(minZ,v1z,v2z,v3z); maxZ=Math.max(maxZ,v1z,v2z,v3z);
       }
     }
   }
-  return Math.max(Math.abs(vol), 0.001); // raw units3
+  return {vol:Math.abs(vol), minX,maxX,minY,maxY,minZ,maxZ};
+}
+function parseSTL(buffer){ return parseSTLFull(buffer).vol; }
+
+// Autodetect unit from bounding box dimensions
+// Logic: if max dimension > 500 -> probably mm (very large object in mm)
+// If max dimension between 5 and 500 -> almost certainly mm (typical parts)
+// If max dimension between 0.1 and 5 -> probably inches or cm
+// If max dimension < 0.1 -> probably meters
+function autoDetectUnit(maxDim){
+  if(maxDim >= 5) return 'mm';     // 99% of STL files from CAD are in mm
+  if(maxDim >= 0.1) return 'in';   // small values = inches or cm
+  return 'mm';                      // fallback
+}
+
+function unitToCm3Factor(unit){
+  if(unit==='mm') return 0.001;   // 1 mm3 = 0.001 cm3
+  if(unit==='cm') return 1;       // 1 cm3 = 1 cm3
+  if(unit==='in') return 16.387;  // 1 in3 = 16.387 cm3
+  return 0.001;
 }
 
 // === IMAGE REF ===
@@ -1488,6 +1520,6 @@ function showToast(msg){
 
 // Init
 addPieza();
-</script>
+ </script>
 </body>
 </html>
