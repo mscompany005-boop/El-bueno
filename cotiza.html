@@ -1277,16 +1277,35 @@ function calcAndRender(){
 const SB_URL='https://sdqwlahtnkypehpmoqaa.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNkcXdsYWh0bmt5cGVocG1vcWFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMjQ3MDcsImV4cCI6MjA5MjgwMDcwN30.qI6vj1ZM8qXt2Dq9mu8m0GK_BWUWs3Zr0E_0Spgedkc';
 
+async function uploadSTLToStorage(folio, stlName, stlBuf){
+  try{
+    const path=`${folio}/${stlName}`;
+    const res=await fetch(`${SB_URL}/storage/v1/object/stl-files/${path}`,{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/octet-stream','x-upsert':'true'},
+      body:stlBuf
+    });
+    if(!res.ok) throw new Error(await res.text());
+    return path;
+  }catch(e){
+    console.log('STL upload error:',e.message);
+    return null;
+  }
+}
+
 async function savePedido(){
   try{
     const nombre=$('c-nombre').value.trim();
     const charges=getCharges();
-    // Convert STL buffers to base64 for storage
-    const stlFiles=await Promise.all(piezas.filter(p=>p.stlBuf).map(async p=>{
-      const bytes=new Uint8Array(p.stlBuf);
-      let bin='';bytes.forEach(b=>bin+=String.fromCharCode(b));
-      return {name:p.stlName,data:btoa(bin)};
-    }));
+
+    // Upload STL files to Storage, save only paths in DB
+    const stlFiles=await Promise.all(
+      piezas.filter(p=>p.stlBuf&&p.stlName).map(async p=>{
+        const path=await uploadSTLToStorage(currentFolio, p.stlName, p.stlBuf);
+        return {name:p.stlName, path, gramos:p.gramos, volCm3:p.volCm3};
+      })
+    );
+
     const record={
       id:currentFolio+'-'+Date.now(),
       folio:currentFolio,
