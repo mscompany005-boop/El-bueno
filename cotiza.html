@@ -1035,9 +1035,8 @@ function processFileForPieza(id,file){
           y:Math.abs(parsed.maxY-parsed.minY),
           z:Math.abs(parsed.maxZ-parsed.minZ)
         };
-        // Autodetect unit from bounding box max dimension
-        const maxDim=Math.max(p.bbox.x, p.bbox.y, p.bbox.z);
-        const detectedUnit=autoDetectUnit(maxDim);
+        // Autodetect unit from raw volume (weight-based heuristic)
+        const detectedUnit=autoDetectUnit(parsed.vol);
         p.unit=detectedUnit;
         p.volCm3=parsed.vol * unitToCm3Factor(detectedUnit);
         p.gramos=calcGramos(p.volCm3);
@@ -1226,21 +1225,33 @@ function parseSTLFull(buffer){
 }
 function parseSTL(buffer){ return parseSTLFull(buffer).vol; }
 
-// Autodetect unit from bounding box dimensions
-// Logic: if max dimension > 500 -> probably mm (very large object in mm)
-// If max dimension between 5 and 500 -> almost certainly mm (typical parts)
-// If max dimension between 0.1 and 5 -> probably inches or cm
-// If max dimension < 0.1 -> probably meters
-function autoDetectUnit(maxDim){
-  if(maxDim >= 5) return 'mm';     // 99% of STL files from CAD are in mm
-  if(maxDim >= 0.1) return 'in';   // small values = inches or cm
-  return 'mm';                      // fallback
+// Smart unit autodetection: try all 3 units, pick whichever gives
+// the most physically realistic weight for a 3D printed part.
+// Realistic range: 0.5g to 5000g. Parts outside that are absurd.
+function autoDetectUnit(rawVol){
+  const density=1.24; // PLA g/cm3 approx
+  const waste=0.15;
+  const candidates=[
+    {unit:'mm', factor:0.001},
+    {unit:'cm', factor:1},
+    {unit:'in', factor:16.387},
+  ];
+  let best=null, bestScore=-1;
+  for(const c of candidates){
+    const g=rawVol*c.factor*density*(1+waste);
+    let score=0;
+    if(g>=0.5   && g<=5000)  score=3; // ideal
+    else if(g>=0.05 && g<=50000) score=2; // ok
+    else if(g>0) score=1;              // at least non-zero
+    if(score>bestScore){bestScore=score;best=c;}
+  }
+  return best?best.unit:'mm';
 }
 
 function unitToCm3Factor(unit){
-  if(unit==='mm') return 0.001;   // 1 mm3 = 0.001 cm3
-  if(unit==='cm') return 1;       // 1 cm3 = 1 cm3
-  if(unit==='in') return 16.387;  // 1 in3 = 16.387 cm3
+  if(unit==='mm') return 0.001;
+  if(unit==='cm') return 1;
+  if(unit==='in') return 16.387;
   return 0.001;
 }
 
