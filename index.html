@@ -384,7 +384,7 @@ const GS = id => (G(id).value||'').trim();
 const fm = (n,d=2) => '$'+Number(n).toLocaleString('es-MX',{minimumFractionDigits:d,maximumFractionDigits:d});
 const fn = (n,d=2) => Number(n).toLocaleString('es-MX',{minimumFractionDigits:d,maximumFractionDigits:d});
 
-// ── State ──
+// -- State --
 let S = {};
 let cotizaciones = JSON.parse(localStorage.getItem('sd_cotizaciones')||'[]');
 let editingId = null;
@@ -399,7 +399,7 @@ if(SB_URL && SB_KEY){ G('db-connected').style.display='block'; }
 // Init date
 G('fecha').value = new Date().toISOString().split('T')[0];
 
-// ── Tabs ──
+// -- Tabs --
 function goTab(t) {
   ['form','prev','hist','cfg'].forEach(id=>{
     G('pnl-'+id).classList.toggle('on',id===t);
@@ -422,7 +422,7 @@ function scaleDoc() {
 }
 window.addEventListener('resize',()=>{ if(G('pnl-prev').classList.contains('on')) scaleDoc(); });
 
-// ── Folio generator ──
+// -- Folio generator --
 function nextFolio() {
   const year = new Date().getFullYear();
   const all = cotizaciones.filter(c=>c.folio&&c.folio.startsWith('SD-'+year));
@@ -431,7 +431,7 @@ function nextFolio() {
   return `SD-${year}-${String(next).padStart(3,'0')}`;
 }
 
-// ── Calc ──
+// -- Calc --
 function calc() {
   const fkg=GV('p-fkg'),luz=GV('p-luz'),w=GV('p-w'),prd=GV('p-prd')||1;
   const ci=GV('p-ci'),vi=GV('p-vi')||1,ca=GV('p-ca'),ch=GV('p-ch')||1;
@@ -459,29 +459,29 @@ function calc() {
 function renderHero() {
   const c=S;
   G('h-tot').innerHTML=fm(c.total)+' <span style="font-size:15px;color:#94a3b8;font-weight:400">MXN</span>';
-  G('h-sub').textContent=fm(c.pPza)+' / pza · '+c.qty+' pza'+(c.minAp?' (mín.)':'');
+  G('h-sub').textContent=fm(c.pPza)+' / pza . '+c.qty+' pza'+(c.minAp?' (mín.)':'');
   const segs=[{v:c.fTot,col:'#2563eb'},{v:c.eTot,col:'#7c4dff'},{v:c.cTot,col:'#f59e0b'},{v:c.dTot,col:'#ef4444'},{v:c.util>0?c.util:0,col:'#10b981'}];
   const tb=segs.reduce((a,b)=>a+b.v,0);
   G('bw').innerHTML=tb>0?segs.map(s=>`<div style="flex:${s.v/tb};background:${s.col};border-radius:3px;min-width:2px"></div>`).join(''):'';
   const nm=['Material','Luz','Cama','Desgaste','Ganancia'];
-  G('bl').innerHTML=segs.map((s,i)=>`<span style="color:${s.col}">● ${nm[i]}</span>`).join('');
+  G('bl').innerHTML=segs.map((s,i)=>`<span style="color:${s.col}">* ${nm[i]}</span>`).join('');
   G('d-pp').textContent=fm(c.pPza)+(c.minAp?' ⚠️':'');
   G('d-si').textContent=fm(c.subImp);
 }
 
 function renderDoc() {
   const c=S;
-  const folio = editingId ? (cotizaciones.find(x=>x.id===editingId)||{}).folio||'—' : nextFolio();
+  const folio = editingId ? (cotizaciones.find(x=>x.id===editingId)||{}).folio||'-' : nextFolio();
   G('q-folio').textContent=folio;
-  G('q-fecha').textContent=c.fecha||'—';
-  G('q-cli').textContent=c.cliente||'—';
-  G('q-con').textContent=c.contacto||'—';
-  G('q-pro').textContent=c.proyecto||'—';
-  G('q-mat').textContent=c.material||'—';
-  G('q-col').textContent=c.color||'—';
-  G('q-pieza').textContent=c.pieza||'—';
-  G('q-mat2').textContent=c.material||'—';
-  G('q-col2').textContent=c.color||'—';
+  G('q-fecha').textContent=c.fecha||'-';
+  G('q-cli').textContent=c.cliente||'-';
+  G('q-con').textContent=c.contacto||'-';
+  G('q-pro').textContent=c.proyecto||'-';
+  G('q-mat').textContent=c.material||'-';
+  G('q-col').textContent=c.color||'-';
+  G('q-pieza').textContent=c.pieza||'-';
+  G('q-mat2').textContent=c.material||'-';
+  G('q-col2').textContent=c.color||'-';
   G('q-cant').textContent=c.qty;
   G('q-gp').textContent=fn(c.gPza);
   G('q-pu').textContent=fm(c.pPza)+(c.minAp?'*':'');
@@ -495,7 +495,7 @@ function renderDoc() {
   G('q-obs').textContent=c.obs||'';
 }
 
-// ── Save cotización ──
+// -- Save cotización --
 async function saveCotizacion() {
   const btn=G('btn-save');
   if(!S.cliente){ alert('Escribe el nombre del cliente antes de guardar.'); return; }
@@ -529,7 +529,7 @@ async function saveCotizacion() {
   btn.textContent='💾 Guardar'; btn.disabled=false;
 }
 
-// ── Supabase helpers ──
+// -- Supabase helpers --
 async function sbFetch(path,method='GET',body) {
   const res = await fetch(SB_URL+'/rest/v1/'+path,{
     method,
@@ -580,9 +580,7 @@ async function testConnection() {
     alert('✅ Conectado a Supabase correctamente. Sincronizando...');
     await syncFromSupabase();
   } catch(e){
-    alert('❌ Error de conexión: '+e.message+'
-
-Verifica que la URL y la key sean correctas.');
+    alert('❌ Error de conexión: '+e.message+'\n\nVerifica que la URL y la key sean correctas.');
   }
 }
 
@@ -610,7 +608,7 @@ async function syncFromSupabase() {
   } catch(e){}
 }
 
-// ── Historial ──
+// -- Historial --
 async function loadHist() {
   await syncFromSupabase();
   // stats
@@ -645,41 +643,41 @@ function renderHist() {
     const st=stMap[c.status]||stMap.pending;
     return `<div class="cot-card st-${c.status||'pending'}" onclick="openCot('${c.id}')">
       <div class="cc-top">
-        <div><div class="cc-folio">${c.folio||'—'}</div><div class="cc-fecha">${c.fecha||''}</div></div>
+        <div><div class="cc-folio">${c.folio||'-'}</div><div class="cc-fecha">${c.fecha||''}</div></div>
         <div class="cc-total">${fm(c.total)}</div>
       </div>
-      <div class="cc-cliente">${c.cliente||'—'}</div>
+      <div class="cc-cliente">${c.cliente||'-'}</div>
       <div class="cc-bot">
-        <span class="cc-pieza">${c.pieza||''} ${c.material?'· '+c.material:''}</span>
+        <span class="cc-pieza">${c.pieza||''} ${c.material?'. '+c.material:''}</span>
         <span class="status-badge ${st.cls}">${st.label}</span>
       </div>
     </div>`;
   }).join('');
 }
 
-// ── Modal ──
+// -- Modal --
 function openCot(id) {
   const c=cotizaciones.find(x=>x.id===id); if(!c) return;
   G('modal-title').textContent=c.folio||'Cotización';
-  const stMap={pending:'⏳ Pendiente',accepted:'✅ Aceptada',rejected:'❌ Rechazada',sent:'📤 Enviada'};
+  const stMap={pending:'... Pendiente',accepted:'✅ Aceptada',rejected:'❌ Rechazada',sent:'📤 Enviada'};
   const stCls={pending:'active-pending',accepted:'active-accepted',rejected:'active-rejected',sent:'active-sent'};
   G('modal-body').innerHTML=`
     <div style="display:flex;justify-content:space-between;margin-bottom:12px">
-      <div><div style="font-size:13px;color:#64748b">Cliente</div><div style="font-weight:700">${c.cliente||'—'}</div></div>
+      <div><div style="font-size:13px;color:#64748b">Cliente</div><div style="font-weight:700">${c.cliente||'-'}</div></div>
       <div style="text-align:right"><div style="font-size:13px;color:#64748b">Total</div><div style="font-weight:800;font-size:18px;color:#00d4aa">${fm(c.total)}</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px;font-size:12px">
-      <div><span style="color:#94a3b8">Fecha:</span> ${c.fecha||'—'}</div>
-      <div><span style="color:#94a3b8">Pieza:</span> ${c.pieza||'—'}</div>
-      <div><span style="color:#94a3b8">Material:</span> ${c.material||'—'} ${c.color?'/ '+c.color:''}</div>
+      <div><span style="color:#94a3b8">Fecha:</span> ${c.fecha||'-'}</div>
+      <div><span style="color:#94a3b8">Pieza:</span> ${c.pieza||'-'}</div>
+      <div><span style="color:#94a3b8">Material:</span> ${c.material||'-'} ${c.color?'/ '+c.color:''}</div>
       <div><span style="color:#94a3b8">Cantidad:</span> ${c.cantidad||1} pza</div>
-      <div><span style="color:#94a3b8">Contacto:</span> ${c.contacto||'—'}</div>
-      <div><span style="color:#94a3b8">Proyecto:</span> ${c.proyecto||'—'}</div>
+      <div><span style="color:#94a3b8">Contacto:</span> ${c.contacto||'-'}</div>
+      <div><span style="color:#94a3b8">Proyecto:</span> ${c.proyecto||'-'}</div>
     </div>
     <div class="modal-sep"></div>
     <div style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:.08em;margin-bottom:8px">CAMBIAR ESTADO</div>
     <div class="status-grid">
-      <button class="st-btn ${c.status==='pending'?stCls.pending:''}" onclick="changeStatus('${id}','pending')">⏳ Pendiente</button>
+      <button class="st-btn ${c.status==='pending'?stCls.pending:''}" onclick="changeStatus('${id}','pending')"> Pendiente</button>
       <button class="st-btn ${c.status==='sent'?stCls.sent:''}" onclick="changeStatus('${id}','sent')">📤 Enviada</button>
       <button class="st-btn ${c.status==='accepted'?stCls.accepted:''}" onclick="changeStatus('${id}','accepted')">✅ Aceptada</button>
       <button class="st-btn ${c.status==='rejected'?stCls.rejected:''}" onclick="changeStatus('${id}','rejected')">❌ Rechazada</button>
@@ -749,7 +747,7 @@ async function deleteCot(id) {
   renderHist(); loadHist();
 }
 
-// ── Reset form ──
+// -- Reset form --
 function resetForm() {
   editingId=null;
   ['cliente','contacto','proyecto','pieza','color','obs'].forEach(id=>G(id).value=id==='obs'?'Cotización basada en impresión 3D FDM.':'');
@@ -759,33 +757,33 @@ function resetForm() {
   calc();
 }
 
-// ── Copy WhatsApp ──
+// -- Copy WhatsApp --
 function copyTxt() {
   const c=S;
   const folio=editingId?(cotizaciones.find(x=>x.id===editingId)||{}).folio||nextFolio():nextFolio();
   const t=`🖨️ SkyDove 3D LAB
-Cotización ${folio} — ${c.fecha}
+Cotización ${folio} - ${c.fecha}
 
-👤 ${c.cliente||'—'}  📞 ${c.contacto||'—'}
-📋 ${c.proyecto||'—'}
+👤 ${c.cliente||'-'}  📞 ${c.contacto||'-'}
+📋 ${c.proyecto||'-'}
 
-Pieza: ${c.pieza||'—'} | ${c.material}${c.color?' / '+c.color:''}
-Cantidad: ${c.qty} pza × ${fm(c.pPza)} c/u
+Pieza: ${c.pieza||'-'} | ${c.material}${c.color?' / '+c.color:''}
+Cantidad: ${c.qty} pza  ${fm(c.pPza)} c/u
 
 Impresión 3D:  ${fm(c.subImp)}
 Diseño:        ${fm(c.dis)}
 Acabado:       ${fm(c.aca)}
 Envío:         ${fm(c.env)}
 Descuento:    -${fm(c.des)}
-─────────────────────
+---------------------
 💰 TOTAL: ${fm(c.total)} MXN
 
 ${c.obs}
 Válido 7 días naturales ✅`;
-  navigator.clipboard.writeText(t).then(()=>alert('✅ Copiado — pégalo en WhatsApp')).catch(()=>alert('No se pudo copiar.'));
+  navigator.clipboard.writeText(t).then(()=>alert('✅ Copiado - pégalo en WhatsApp')).catch(()=>alert('No se pudo copiar.'));
 }
 
-// ── Canvas draw ──
+// -- Canvas draw --
 function drawCanvas(scale) {
   return new Promise(async resolve => {
     const docEl=G('doc');
@@ -801,7 +799,7 @@ function drawCanvas(scale) {
     const rect=(x,ry,w,h,fill,stroke)=>{ if(fill){ctx.fillStyle=fill;ctx.fillRect(x,ry,w,h);} if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.strokeRect(x,ry,w,h);} };
     const line=(x1,y1,x2,y2,col,lw=1)=>{ ctx.strokeStyle=col;ctx.lineWidth=lw;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke(); };
     const txt=(text,x,ry,color,size,bold,align='left',maxW)=>{ ctx.fillStyle=color;ctx.font=`${bold?700:400} ${size}px Helvetica,Arial,sans-serif`;ctx.textBaseline='top';ctx.textAlign=align;ctx.fillText(text||'',x,ry,maxW||99999); };
-    const safe=v=>(v===null||v===undefined||v==='')?'—':String(v);
+    const safe=v=>(v===null||v===undefined||v==='')?'-':String(v);
 
     // HEADER
     rect(0,0,W,88,'#0d1117');
@@ -888,9 +886,9 @@ function drawCanvas(scale) {
   });
 }
 
-// ── Export PDF ──
+// -- Export PDF --
 async function exportPDF() {
-  const btn=G('btn-pdf'); btn.textContent='⏳...'; btn.disabled=true;
+  const btn=G('btn-pdf'); btn.textContent='......'; btn.disabled=true;
   const sc=G('doc-scale'); const orig=sc.style.transform;
   sc.style.transform='none'; sc.style.width='700px';
   await new Promise(r=>setTimeout(r,60));
@@ -908,12 +906,12 @@ async function exportPDF() {
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
     }
   } catch(e){ alert('Error: '+e.message); sc.style.transform=orig; }
-  btn.textContent='⬇️ PDF'; btn.disabled=false;
+  btn.textContent='v️ PDF'; btn.disabled=false;
 }
 
-// ── Export Image ──
+// -- Export Image --
 async function exportIMG() {
-  const btn=G('btn-img'); btn.textContent='⏳...'; btn.disabled=true;
+  const btn=G('btn-img'); btn.textContent='......'; btn.disabled=true;
   const sc=G('doc-scale'); const orig=sc.style.transform;
   sc.style.transform='none'; sc.style.width='700px';
   await new Promise(r=>setTimeout(r,60));
@@ -961,7 +959,7 @@ calc();
         updated_at timestamptz default now()
       );
     `;
-    // Try to read — if table exists we're good
+    // Try to read - if table exists we're good
     const r = await fetch(SB_URL+'/rest/v1/cotizaciones?select=id&limit=1', {
       headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
     });
@@ -969,7 +967,7 @@ calc();
       document.getElementById('db-connected').style.display='block';
       await syncFromSupabase();
     } else {
-      // Table doesn't exist yet — show config tab hint
+      // Table doesn't exist yet - show config tab hint
       console.log('Table not ready, go to Config tab and tap Conectar');
     }
   } catch(e){ console.log('Supabase init:', e.message); }
