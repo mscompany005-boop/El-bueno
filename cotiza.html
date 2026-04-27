@@ -957,7 +957,7 @@ function totalGramsAll(){return piezas.reduce((s,p)=>s+(p.gramos||0)*(selectedTi
 
 function addPieza(){
   const id='p'+Date.now();
-  piezas.push({id,nombre:'',qty:1,volCm3:null,gramos:0,stlName:''});
+  piezas.push({id,nombre:'',qty:1,volCm3:null,gramos:0,stlName:'',fileBuf:null,fileType:''});
   renderPiezas();
 }
 
@@ -970,8 +970,8 @@ function renderPiezas(){
     const div=document.createElement('div');
     div.className='pieza-card';div.id='pc-'+p.id;
     const stlEl=p.stlName
-      ?`<div class="stl-viewer-wrap" id="vw-${p.id}"><canvas id="vc-${p.id}"></canvas><div class="stl-viewer-badge" id="vb-${p.id}">—</div><div class="stl-viewer-stats">${p.gramos.toFixed(1)}g · ${p.volCm3?p.volCm3.toFixed(2)+' cm³':''}</div></div><div class="stl-loaded"><span style="font-size:16px">📦</span><span class="stl-loaded-name">${p.stlName}</span><button class="stl-loaded-del" onclick="clearPiezaSTL('${p.id}')">✕ Quitar</button></div>`
-      :`<div class="stl-dropzone" id="dz-${p.id}"><input type="file" accept=".stl,.STL" id="si-${p.id}" onchange="handlePiezaSTL('${p.id}',this)"><div class="stl-dz-icon">📁</div><div class="stl-dz-label">Subir archivo STL</div><div class="stl-dz-sub">opcional · arrastra o toca aquí</div></div>`;
+      ?`<div class="stl-viewer-wrap" id="vw-${p.id}"><canvas id="vc-${p.id}"></canvas><div class="stl-viewer-badge" id="vb-${p.id}">—</div><div class="stl-viewer-stats" id="vs-${p.id}">${p.gramos.toFixed(1)}g · ${p.volCm3?p.volCm3.toFixed(2)+' cm³':p.fileType==='step'?'Archivo STEP':''}</div></div><div class="stl-loaded"><span style="font-size:16px">${p.fileType==='step'?'🔩':'📦'}</span><span class="stl-loaded-name">${p.stlName}</span><span style="font-size:10px;color:var(--text3);margin-left:4px">${p.fileType==='step'?'STEP — sin visor 3D':''}</span><button class="stl-loaded-del" onclick="clearPiezaSTL('${p.id}')">✕ Quitar</button></div>`
+      :`<div class="stl-dropzone" id="dz-${p.id}"><input type="file" accept=".stl,.STL,.step,.STEP,.stp,.STP" id="si-${p.id}" onchange="handlePiezaFile('${p.id}',this)"><div class="stl-dz-icon">📁</div><div class="stl-dz-label">Subir archivo 3D</div><div class="stl-dz-sub">STL o STEP · opcional · arrastra o toca aquí</div></div>`;
     div.innerHTML=`
       <div class="pieza-card-header">
         <span class="pieza-num">Pieza ${i+1}${p.nombre?' / '+p.nombre:''}</span>
@@ -982,7 +982,9 @@ function renderPiezas(){
         <div class="field"><div class="field-label">Nombre / descripción</div><input type="text" value="${p.nombre||''}" placeholder="ej. Soporte lateral" oninput="updateP('${p.id}','nombre',this.value)"></div>
         <div class="field"><div class="field-label">Cantidad${isPedido?' <span class="field-label-tag">Pedido: 1</span>':''}</div><input type="number" value="${isPedido?1:p.qty}" min="1" ${isPedido?'disabled':''} oninput="updateP('${p.id}','qty',parseInt(this.value)||1)"></div>
       </div>
-      ${!p.stlName?`<div class="field"><div class="field-label">Peso estimado <span class="field-label-tag">si lo sabes</span></div><input type="number" value="${p.gramos||''}" min="0" step="0.5" placeholder="gramos por pieza" oninput="updateP('${p.id}','gramos',parseFloat(this.value)||0)"></div>`:''}
+      ${!p.stlName?`<div class="field"><div class="field-label">Peso estimado <span class="field-label-tag">si lo sabes</span></div><input type="number" value="${p.gramos||''}" min="0" step="0.5" placeholder="gramos por pieza" oninput="updateP('${p.id}','gramos',parseFloat(this.value)||0)"></div>`
+      : p.fileType==='step'?`<div class="field"><div class="field-label">Peso estimado (g/pza) <span class="field-label-tag">requerido para STEP</span></div><input type="number" value="${p.gramos||''}" min="0" step="0.5" placeholder="ej. 25.5" oninput="updateP('${p.id}','gramos',parseFloat(this.value)||0)"></div>`
+      : p.volCm3?`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;background:var(--deep);border-radius:8px;padding:8px 12px;border:1px solid var(--border)"><span style="font-size:11px;color:var(--text3);flex:1">Unidades del STL:</span><select style="background:var(--deep);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:11px;padding:4px 8px;outline:none" onchange="changeUnit('${p.id}',this.value)"><option value="mm" ${(p.unit||'mm')==='mm'?'selected':''}>Milímetros (mm)</option><option value="cm" ${p.unit==='cm'?'selected':''}>Centímetros (cm)</option><option value="in" ${p.unit==='in'?'selected':''}>Pulgadas (in)</option></select></div>`:''}
     `;
     list.appendChild(div);
     if(!p.stlName){
@@ -990,11 +992,11 @@ function renderPiezas(){
       if(dz){
         dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
         dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
-        dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');if(e.dataTransfer.files[0])processSTLForPieza(p.id,e.dataTransfer.files[0]);});
+        dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');if(e.dataTransfer.files[0])processFileForPieza(p.id,e.dataTransfer.files[0]);});
       }
     } else {
-      // Launch 3D viewer for this pieza
-      setTimeout(()=>launchPiezaViewer(p.id, p.stlBuf, p.volCm3), 50);
+      // Launch 3D viewer only for STL files
+      if(p.fileType==='stl' && p.fileBuf) setTimeout(()=>launchPiezaViewer(p.id, p.fileBuf, p.volCm3), 50);
     }
   });
 }
@@ -1004,28 +1006,59 @@ function updateP(id,key,val){
   p[key]=val;if(key==='gramos')checkColorLock();
 }
 
-function handlePiezaSTL(id,inp){if(inp.files[0])processSTLForPieza(id,inp.files[0]);}
+function handlePiezaFile(id,inp){if(inp.files[0])processFileForPieza(id,inp.files[0]);}
+// keep old name as alias
+function handlePiezaSTL(id,inp){handlePiezaFile(id,inp);}
 
-function processSTLForPieza(id,file){
-  if(!file.name.toLowerCase().endsWith('.stl')){showToast('⚠️ Solo archivos .STL');return;}
+function processFileForPieza(id,file){
+  const name=file.name.toLowerCase();
+  const isSTL=name.endsWith('.stl');
+  const isSTEP=name.endsWith('.step')||name.endsWith('.stp');
+  if(!isSTL&&!isSTEP){showToast('⚠️ Solo archivos STL o STEP');return;}
   const p=piezas.find(x=>x.id===id);if(!p)return;
-  showToast('⏳ Analizando '+file.name+'…');
+  showToast('⏳ Leyendo '+file.name+'…');
   const reader=new FileReader();
   reader.onload=e=>{
     try{
-      const buf=e.target.result;const vol=parseSTL(buf);
-      p.stlName=file.name;p.volCm3=vol;p.gramos=calcGramos(vol);p.stlBuf=buf;
-      if(!p.nombre)p.nombre=file.name.replace(/\.stl$/i,'');
-      renderPiezas();checkColorLock();
-      showToast('✅ '+file.name+' — '+vol.toFixed(2)+' cm³ · '+p.gramos.toFixed(1)+'g');
-    }catch(err){showToast('❌ Error al leer STL');}
+      const buf=e.target.result;
+      p.stlName=file.name; p.fileBuf=buf;
+      if(isSTL){
+        p.fileType='stl';
+        const rawVol=parseSTL(buf); // raw unit³ value
+        p.volCm3Raw=rawVol;
+        p.unit='mm'; // default: assume mm
+        const factor=0.001; // mm³ to cm³
+        p.volCm3=rawVol*factor;
+        p.gramos=calcGramos(p.volCm3);
+        if(!p.nombre)p.nombre=file.name.replace(/\.stl$/i,'');
+        renderPiezas(); checkColorLock();
+        showToast('✅ '+file.name+' — '+p.volCm3.toFixed(2)+' cm³ · '+p.gramos.toFixed(1)+'g (asumiendo mm)');
+      } else {
+        // STEP file — no geometry parse, show as uploaded
+        p.fileType='step'; p.volCm3=null;
+        if(!p.nombre)p.nombre=file.name.replace(/\.(step|stp)$/i,'');
+        renderPiezas(); checkColorLock();
+        showToast('✅ '+file.name+' (STEP) — ingresa el peso manualmente');
+      }
+    }catch(err){showToast('❌ Error al leer archivo');}
   };
   reader.readAsArrayBuffer(file);
 }
 
-function clearPiezaSTL(id){
+function changeUnit(id, unit){
+  const p=piezas.find(x=>x.id===id); if(!p||!p.fileBuf||!p.volCm3Raw) return;
+  p.unit=unit;
+  // Recalculate volume based on unit
+  // STL is unitless — user tells us the unit
+  // 1 mm³ = 0.001 cm³, 1 in³ = 16.387 cm³
+  const factor = unit==='mm'? 0.001 : unit==='cm'? 1 : unit==='in'? 16.387 : 0.001;
+  p.volCm3 = p.volCm3Raw * factor;
+  p.gramos = calcGramos(p.volCm3);
+  renderPiezas(); checkColorLock();
+  showToast('✅ Actualizado en '+unit+' — '+p.gramos.toFixed(1)+'g');
+}
   const p=piezas.find(x=>x.id===id);if(!p)return;
-  p.stlName='';p.volCm3=null;p.gramos=0;p.stlBuf=null;renderPiezas();checkColorLock();
+  p.stlName='';p.volCm3=null;p.gramos=0;p.fileBuf=null;p.fileType='';renderPiezas();checkColorLock();
 }
 
 // Per-pieza 3D viewer
@@ -1155,7 +1188,7 @@ function getCharges(){
   }));
 }
 
-// ═══ STL PARSER ═══
+// Returns raw volume in the STL's native units³ (could be mm³, cm³, inches³ — unknown until user tells us)
 function parseSTL(buffer){
   const view=new DataView(buffer);let vol=0;
   if(buffer.byteLength>84){
@@ -1170,7 +1203,7 @@ function parseSTL(buffer){
       }
     }
   }
-  const c=Math.abs(vol)/1000;return c<0.001?5:c;
+  return Math.max(Math.abs(vol), 0.001); // raw units³
 }
 
 // ═══ IMAGE REF ═══
@@ -1277,35 +1310,18 @@ function calcAndRender(){
 const SB_URL='https://sdqwlahtnkypehpmoqaa.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNkcXdsYWh0bmt5cGVocG1vcWFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMjQ3MDcsImV4cCI6MjA5MjgwMDcwN30.qI6vj1ZM8qXt2Dq9mu8m0GK_BWUWs3Zr0E_0Spgedkc';
 
-async function uploadSTLToStorage(folio, stlName, stlBuf){
-  try{
-    const path=`${folio}/${stlName}`;
-    const res=await fetch(`${SB_URL}/storage/v1/object/stl-files/${path}`,{
-      method:'POST',
-      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/octet-stream','x-upsert':'true'},
-      body:stlBuf
-    });
-    if(!res.ok) throw new Error(await res.text());
-    return path;
-  }catch(e){
-    console.log('STL upload error:',e.message);
-    return null;
-  }
-}
-
 async function savePedido(){
   try{
     const nombre=$('c-nombre').value.trim();
     const charges=getCharges();
-
-    // Upload STL files to Storage, save only paths in DB
+    // Convert file buffers to base64 for direct DB storage
     const stlFiles=await Promise.all(
-      piezas.filter(p=>p.stlBuf&&p.stlName).map(async p=>{
-        const path=await uploadSTLToStorage(currentFolio, p.stlName, p.stlBuf);
-        return {name:p.stlName, path, gramos:p.gramos, volCm3:p.volCm3};
+      piezas.filter(p=>p.fileBuf&&p.stlName).map(async p=>{
+        const bytes=new Uint8Array(p.fileBuf);
+        let bin=''; bytes.forEach(b=>bin+=String.fromCharCode(b));
+        return {name:p.stlName, data:btoa(bin), gramos:p.gramos, volCm3:p.volCm3||null};
       })
     );
-
     const record={
       id:currentFolio+'-'+Date.now(),
       folio:currentFolio,
