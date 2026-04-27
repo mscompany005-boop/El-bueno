@@ -302,17 +302,26 @@ async function updateStatus(id,status){
 function downloadSTL(pedidoId, fileName){
   const p=allPedidos.find(x=>x.id===pedidoId);if(!p)return;
   const f=p.stl_files?.find(x=>x.name===fileName);
-  if(!f||!f.data){showToast('⚠️ Archivo no disponible');return;}
-  // Decode base64 and download
-  try{
-    const binary=atob(f.data);
-    const bytes=new Uint8Array(binary.length);
-    for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
-    const blob=new Blob([bytes],{type:'application/octet-stream'});
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fileName;
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
-    showToast('✅ Descargando '+fileName);
-  }catch(e){showToast('❌ Error al descargar');}
+  if(!f){showToast('⚠️ Archivo no encontrado');return;}
+  // New format: base64 data
+  if(f.data){
+    try{
+      const binary=atob(f.data);
+      const bytes=new Uint8Array(binary.length);
+      for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+      const blob=new Blob([bytes],{type:'application/octet-stream'});
+      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fileName;
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      showToast('✅ Descargando '+fileName);
+    }catch(e){showToast('❌ Error al descargar');}
+  // Old format: storage path - open in new tab
+  } else if(f.path){
+    const url=SB_URL+'/storage/v1/object/public/stl-files/'+f.path;
+    window.open(url,'_blank');
+    showToast('Abriendo archivo...');
+  } else {
+    showToast('⚠️ Archivo sin datos — pedido enviado antes de la actualización');
+  }
 }
 
 function showToast(msg){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),3000);}
