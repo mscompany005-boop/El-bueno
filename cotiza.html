@@ -648,6 +648,33 @@ box-shadow:0 8px 32px #00000060;
   </div>
 </div>
 
+<!-- RELLENO -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-icon">🔲</div>
+    <div class="card-title">Porcentaje de relleno</div>
+  </div>
+  <div style="font-size:11px;color:var(--text3);margin-bottom:12px">El relleno interior de la pieza. Más relleno = más resistente y más pesado.</div>
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px" id="infill-grid">
+    <div class="infill-btn" data-infill="0.15" onclick="selInfill(this)" style="border:1.5px solid var(--border2);border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;transition:.2s">
+      <div style="font-size:16px">░</div><div style="font-size:13px;font-weight:700;color:var(--text)">15%</div><div style="font-size:9px;color:var(--text3)">Ligero</div>
+    </div>
+    <div class="infill-btn sel" data-infill="0.20" onclick="selInfill(this)" style="border:1.5px solid var(--cyan);border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;transition:.2s;background:#00f5c410">
+      <div style="font-size:16px">▒</div><div style="font-size:13px;font-weight:700;color:var(--cyan)">20%</div><div style="font-size:9px;color:var(--text3)">Normal</div>
+    </div>
+    <div class="infill-btn" data-infill="0.30" onclick="selInfill(this)" style="border:1.5px solid var(--border2);border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;transition:.2s">
+      <div style="font-size:16px">▓</div><div style="font-size:13px;font-weight:700;color:var(--text)">30%</div><div style="font-size:9px;color:var(--text3)">Firme</div>
+    </div>
+    <div class="infill-btn" data-infill="0.50" onclick="selInfill(this)" style="border:1.5px solid var(--border2);border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;transition:.2s">
+      <div style="font-size:16px">█</div><div style="font-size:13px;font-weight:700;color:var(--text)">50%</div><div style="font-size:9px;color:var(--text3)">Resistente</div>
+    </div>
+    <div class="infill-btn" data-infill="1.00" onclick="selInfill(this)" style="border:1.5px solid var(--border2);border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;transition:.2s">
+      <div style="font-size:16px">■</div><div style="font-size:13px;font-weight:700;color:var(--text)">100%</div><div style="font-size:9px;color:var(--text3)">Sólido</div>
+    </div>
+  </div>
+  <div style="margin-top:10px;font-size:11px;color:var(--text3);text-align:center" id="infill-note">20% — uso general, buena resistencia para piezas cotidianas</div>
+</div>
+
 <!-- COLOR -->
 <div class="card">
   <div class="card-header">
@@ -893,7 +920,12 @@ box-shadow:0 8px 32px #00000060;
 const CFG={
   filamentoPorKg:350,tarifaLuz:1.11,wattsImpresora:200,produccionGxH:15,
   costoImpresora:10370,vidaUtilH:5000,costoCama:415,cambioCamaH:1000,
-  margen:0.40,minimo:20,desperdicio:0.05,
+  margen:0.40,minimo:20,
+  // infillFactor: accounts for partial infill in slicer (not solid).
+  // Calibrated from real prints: slicer reports ~58% of STL solid volume.
+  // Formula: walls + top/bottom layers + infill% interior
+  // Typical 15% infill, 2 perimeters, 3 top/bottom layers on small parts = ~0.58
+  infillFactor:0.58,
   waNumber:'524425037979'
 };
 const filG=CFG.filamentoPorKg/1000;
@@ -908,6 +940,7 @@ const fm=v=>'$'+Number(v).toLocaleString('es-MX',{minimumFractionDigits:2,maximu
 
 let selectedMat='PLA',selectedColor='Blanco',selectedTipo='individual';
 let selectedEnvio={key:'normal',price:0};
+let selectedInfill=0.20; // default 20%
 let hasVoladizo=false,hasDiseno=false;
 let piezas=[],quoteData={};
 let refImgBase64=null,refImgName='';
@@ -953,7 +986,17 @@ const MATS={'PLA':{density:1.24,priceKg:350},'PETG':{density:1.27,priceKg:400},'
 })();
 
 // === PIEZAS ===
-function calcGramos(vol){const mat=MATS[selectedMat]||MATS.PLA;return vol*mat.density*(1+CFG.desperdicio);}
+// Infill to volume factor:
+// Walls + top/bottom always ~30% of volume regardless of infill.
+// Interior is infill% of remaining 70%.
+// So total = 0.30 + (infill * 0.70)
+// infillToFactor: converts infill % to fraction of solid volume actually printed.
+// Calibrated: at 20% infill, real print = ~61% of solid volume.
+// Walls + top/bottom contribute ~48% fixed, infill adds the rest proportionally.
+// Formula: walls_base(0.48) + infill * (1 - 0.48)
+// At 15%->0.558, 20%->0.584, 30%->0.634, 50%->0.74, 100%->1.0
+function infillToFactor(infill){return 0.48+(infill*0.52);}
+function calcGramos(vol){const mat=MATS[selectedMat]||MATS.PLA;return vol*mat.density*infillToFactor(selectedInfill);}
 function totalGramsAll(){return piezas.reduce((s,p)=>s+(p.gramos||0)*(selectedTipo==='pedido'?1:(p.qty||1)),0);}
 
 function addPieza(){
@@ -1158,6 +1201,25 @@ function selMat(el){
   piezas.forEach(p=>{if(p.volCm3)p.gramos=calcGramos(p.volCm3);});
   renderPiezas();checkColorLock();
 }
+function selInfill(el){
+  const pct=parseFloat(el.dataset.infill);if(!pct)return;
+  document.querySelectorAll('#infill-grid .infill-btn').forEach(c=>{
+    c.classList.remove('sel');
+    c.style.border='1.5px solid var(--border2)';
+    c.style.background='';
+    c.querySelector('div:nth-child(2)').style.color='var(--text)';
+  });
+  el.classList.add('sel');
+  el.style.border='1.5px solid var(--cyan)';
+  el.style.background='#00f5c410';
+  el.querySelector('div:nth-child(2)').style.color='var(--cyan)';
+  selectedInfill=pct;
+  const notes={0.15:'15% -- ligero, piezas decorativas o de baja carga',0.20:'20% -- uso general, buena resistencia para piezas cotidianas',0.30:'30% -- firme, piezas funcionales con carga moderada',0.50:'50% -- resistente, piezas con alta carga o esfuerzo',1.00:'100% -- solido, maxima resistencia y peso'};
+  $('infill-note').textContent=notes[pct]||'';
+  // Recalculate all piece weights
+  piezas.forEach(p=>{if(p.volCm3)p.gramos=calcGramos(p.volCm3);});
+  renderPiezas();checkColorLock();
+}
 function selColor(el){
   if(el.classList.contains('locked'))return;
   document.querySelectorAll('#color-grid .color-chip').forEach(c=>c.classList.remove('sel'));
@@ -1231,7 +1293,7 @@ function parseSTL(buffer){ return parseSTLFull(buffer).vol; }
 // Realistic range: 0.5g to 5000g. Parts outside that are absurd.
 function autoDetectUnit(rawVol){
   const density=1.24; // PLA g/cm3 approx
-  const waste=0.15;
+  const infill=0.58;
   const candidates=[
     {unit:'mm', factor:0.001},
     {unit:'cm', factor:1},
@@ -1239,7 +1301,7 @@ function autoDetectUnit(rawVol){
   ];
   let best=null, bestScore=-1;
   for(const c of candidates){
-    const g=rawVol*c.factor*density*(1+waste);
+    const g=rawVol*c.factor*density*infillToFactor(0.20);
     let score=0;
     if(g>=0.5   && g<=5000)  score=3; // ideal
     else if(g>=0.05 && g<=50000) score=2; // ok
