@@ -6,8 +6,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>SkyDove 3D LAB — Cotizador</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">  </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js">  </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">   </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js">   </script>
 <style>
 /* ═══════════════════════════════════════════
    RESET & ROOT
@@ -612,25 +612,12 @@ box-shadow:0 8px 32px #00000060;
   <div id="sec2" style="display:none">
 
 ```
-<!-- TIPO -->
-<div class="card">
-  <div class="card-header">
-    <div class="card-icon">🗂️</div>
-    <div class="card-title">Tipo de pedido</div>
-  </div>
+<!-- TIPO - hidden, always individual -->
+<div class="card" style="display:none">
   <div class="tipo-grid">
-    <div class="tipo-card sel" data-tipo="individual" onclick="selTipo(this)">
-      <div class="tipo-card-icon">📦</div>
-      <div class="tipo-card-name">Por pieza individual</div>
-      <div class="tipo-card-desc">Cada pieza se imprime y cobra por separado</div>
-    </div>
-    <div class="tipo-card" data-tipo="pedido" onclick="selTipo(this)">
-      <div class="tipo-card-icon">🗂️</div>
-      <div class="tipo-card-name">Pedido completo</div>
-      <div class="tipo-card-desc">Todo en una sola corrida de impresión</div>
-    </div>
+    <div class="tipo-card sel" data-tipo="individual" onclick="selTipo(this)"></div>
   </div>
-  <div id="tipo-note" class="info-box" style="margin-top:12px">Cada pieza se imprime por separado y se cobra individualmente.</div>
+  <div id="tipo-note" style="display:none"></div>
 </div>
 
 <!-- MATERIAL -->
@@ -1056,7 +1043,7 @@ function processFileForPieza(id,file){
         p.gramos=calcGramos(p.volCm3);
         if(!p.nombre)p.nombre=file.name.replace(/\.stl$/i,'');
         renderPiezas(); checkColorLock();
-        showToast('✅ '+file.name+' — selecciona las unidades para continuar');
+        showToast('✅ '+file.name+' - selecciona las unidades para continuar');
       } else {
         // STEP file - no geometry parse, show as uploaded
         p.fileType='step'; p.volCm3=null;
@@ -1331,15 +1318,12 @@ function calcApprox(){
   const mat=MATS[selectedMat]||MATS.PLA;
   const cG=(mat.priceKg/1000)+elecG+camaG+desgG;
   const pG=cG/(1-CFG.margen);
-  let sub=0,totalG=0;
-  piezas.forEach(p=>{const g=p.gramos||0;const qty=selectedTipo==='pedido'?1:(p.qty||1);
-    if(selectedTipo==='pedido'){totalG+=g*qty;}
-    else{sub+=Math.max(g*pG,CFG.minimo)*qty;}
-  });
-  if(selectedTipo==='pedido') sub=Math.max(totalG*pG,CFG.minimo);
+  let sub=0;
+  piezas.forEach(p=>{const g=p.gramos||0;const qty=p.qty||1;sub+=g*pG*qty;});
+  sub=Math.max(sub,CFG.minimo); // minimum applies to TOTAL, not per piece
   const charges=getCharges();
   const total=sub+charges.reduce((s,c)=>s+c.price,0)+selectedEnvio.price;
-  return `💡 Referencia sin soportes: aprox. ${fm(total)} MXN. El precio final con soportes puede ser mayor según la geometría.`;
+  return '💡 Referencia sin soportes: aprox. '+fm(total)+' MXN. El precio final con soportes puede ser mayor según la geometría.';
 }
 
 function calcAndRender(){
@@ -1347,33 +1331,39 @@ function calcAndRender(){
   const cG=(mat.priceKg/1000)+elecG+camaG+desgG;
   const pG=cG/(1-CFG.margen);
   let subtotalPiezas=0,totalGramos=0,rows='';
+  // First pass: calculate real prices (no minimum yet)
   piezas.forEach((p,i)=>{
-    const g=p.gramos||0;const qty=selectedTipo==='pedido'?1:(p.qty||1);
-    const pPza=Math.max(g*pG,CFG.minimo);const subP=pPza*qty;
-    if(selectedTipo!=='pedido'){subtotalPiezas+=subP;rows+=`<div class="result-row"><span class="lbl">📦 ${p.nombre||'Pieza '+(i+1)} x${qty}</span><span class="val ac">${fm(subP)}</span></div>`;}
+    const g=p.gramos||0;const qty=p.qty||1;
+    const realPrice=g*pG*qty;
+    subtotalPiezas+=realPrice;
     totalGramos+=g*qty;
+    rows+='<div class="result-row"><span class="lbl">📦 '+(p.nombre||'Pieza '+(i+1))+' x'+qty+'</span><span class="val ac">'+fm(realPrice)+'</span></div>';
   });
-  if(selectedTipo==='pedido'){subtotalPiezas=Math.max(totalGramos*pG,CFG.minimo);rows=`<div class="result-row"><span class="lbl">📦 Pedido completo (${piezas.length} pza${piezas.length>1?'s':''})</span><span class="val ac">${fm(subtotalPiezas)}</span></div>`;}
+  // Apply minimum to total only
+  if(subtotalPiezas<CFG.minimo && subtotalPiezas>0){
+    rows+='<div class="result-row"><span class="lbl" style="color:var(--amber)">⚠️ Mínimo de pedido</span><span class="val ac">'+fm(CFG.minimo-subtotalPiezas)+'</span></div>';
+    subtotalPiezas=CFG.minimo;
+  }
   const charges=getCharges();let totalCargos=0;
-  charges.forEach(c=>{totalCargos+=c.price;rows+=`<div class="result-row"><span class="lbl">${c.label}</span><span class="val">+${fm(c.price)}</span></div>`;});
+  charges.forEach(c=>{totalCargos+=c.price;rows+='<div class="result-row"><span class="lbl">'+c.label+'</span><span class="val">+'+fm(c.price)+'</span></div>';});
   const envPrice=selectedEnvio.price;
   const envLabel=document.querySelector('.envio-item.sel .envio-name')?.textContent||'Entrega normal';
-  if(envPrice>0)rows+=`<div class="result-row"><span class="lbl">🚚 ${envLabel}</span><span class="val">+${fm(envPrice)}</span></div>`;
+  if(envPrice>0)rows+='<div class="result-row"><span class="lbl">🚚 '+envLabel+'</span><span class="val">+'+fm(envPrice)+'</span></div>';
   const total=subtotalPiezas+totalCargos+envPrice;
-  quoteData={total,subtotalPiezas,totalCargos,envPrice,totalGramos,mat:selectedMat,color:selectedColor,tipo:selectedTipo,piezas:[...piezas],charges,envioLabel:envLabel,nombre:$('c-nombre').value.trim(),wa:($('c-wa').value.trim().replace(/\D/g,'')),proyecto:$('c-proyecto').value.trim()};
+  quoteData={total,subtotalPiezas,totalCargos,envPrice,totalGramos,mat:selectedMat,color:selectedColor,tipo:'individual',piezas:[...piezas],charges,envioLabel:envLabel,nombre:$('c-nombre').value.trim(),wa:($('c-wa').value.trim().replace(/\D/g,'')),proyecto:$('c-proyecto').value.trim()};
 
   // Animate total
   $('r-total').textContent=fm(total);
   if($('r-folio')) $('r-folio').textContent='FOLIO: '+currentFolio;
-  $('r-sub').textContent=`${selectedMat} . ${selectedColor} . ${totalGramos.toFixed(1)}g total`;
-  rows+=`<div class="result-row total-row"><span class="lbl">💰 TOTAL ESTIMADO</span><span class="val">${fm(total)}</span></div>`;
+  $('r-sub').textContent=selectedMat+' . '+selectedColor+' . '+totalGramos.toFixed(1)+'g total';
+  rows+='<div class="result-row total-row"><span class="lbl">💰 TOTAL ESTIMADO</span><span class="val">'+fm(total)+'</span></div>';
   $('result-rows').innerHTML=rows;
-  const pzaPrice=total/Math.max(piezas.reduce((s,p)=>s+(selectedTipo==='pedido'?1:(p.qty||1)),0),1);
-  $('r-stats').innerHTML=`
-    <div class="total-stat"><div class="total-stat-val">${fm(pzaPrice)}</div><div class="total-stat-lbl">Por pieza</div></div>
-    <div class="total-stat" style="border-left:1px solid var(--border);border-right:1px solid var(--border);padding:0 12px"><div class="total-stat-val">${totalGramos.toFixed(0)}g</div><div class="total-stat-lbl">Total material</div></div>
-    <div class="total-stat"><div class="total-stat-val">${selectedMat}</div><div class="total-stat-lbl">Material</div></div>
-  `;
+  const totalPzas=Math.max(piezas.reduce((s,p)=>s+(p.qty||1),0),1);
+  const pzaPrice=total/totalPzas;
+  $('r-stats').innerHTML=
+    '<div class="total-stat"><div class="total-stat-val">'+fm(pzaPrice)+'</div><div class="total-stat-lbl">Por pieza</div></div>'+
+    '<div class="total-stat" style="border-left:1px solid var(--border);border-right:1px solid var(--border);padding:0 12px"><div class="total-stat-val">'+totalGramos.toFixed(0)+'g</div><div class="total-stat-lbl">Total material</div></div>'+
+    '<div class="total-stat"><div class="total-stat-val">'+selectedMat+'</div><div class="total-stat-lbl">Material</div></div>';
 }
 
 // === SEND WA ===
@@ -1553,7 +1543,7 @@ function formatWA(inp){let v=inp.value.replace(/\D/g,'');inp.value=v;}
 
 // Init
 addPieza();
-  </script>
+   </script>
 
 </body>
 </html>
