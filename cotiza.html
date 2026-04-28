@@ -1331,8 +1331,12 @@ function calcApprox(){
   const mat=MATS[selectedMat]||MATS.PLA;
   const cG=(mat.priceKg/1000)+elecG+camaG+desgG;
   const pG=cG/(1-CFG.margen);
-  let sub=0;
-  piezas.forEach(p=>{const g=p.gramos||0;const qty=selectedTipo==='pedido'?1:(p.qty||1);sub+=Math.max(g*pG,CFG.minimo)*qty;});
+  let sub=0,totalG=0;
+  piezas.forEach(p=>{const g=p.gramos||0;const qty=selectedTipo==='pedido'?1:(p.qty||1);
+    if(selectedTipo==='pedido'){totalG+=g*qty;}
+    else{sub+=Math.max(g*pG,CFG.minimo)*qty;}
+  });
+  if(selectedTipo==='pedido') sub=Math.max(totalG*pG,CFG.minimo);
   const charges=getCharges();
   const total=sub+charges.reduce((s,c)=>s+c.price,0)+selectedEnvio.price;
   return `💡 Referencia sin soportes: aprox. ${fm(total)} MXN. El precio final con soportes puede ser mayor según la geometría.`;
@@ -1446,12 +1450,16 @@ async function sendPDF(){
   const q=quoteData;if(!q.total){showToast('Genera la cotización primero');return;}
   const btn=$('btn-pdf');btn.textContent='⏳ Generando...';btn.disabled=true;
   try{
-    const W=680;const cv=document.createElement('canvas');cv.width=W*2;cv.height=700*2;
+    const nRows=(q.piezas?q.piezas.length:1)+(q.charges?q.charges.length:0)+6;
+    const estimH=Math.max(700, 82+56+24+nRows*28+50+36+40);
+    const W=680;const cv=document.createElement('canvas');cv.width=W*2;cv.height=estimH*2;
     const ctx=cv.getContext('2d');ctx.scale(2,2);
     const rect=(x,y,w,h,col)=>{ctx.fillStyle=col;ctx.fillRect(x,y,w,h);};
     const txt=(t,x,y,col,sz,bold,align,maxW)=>{ctx.fillStyle=col;ctx.font=`${bold?700:400} ${sz}px Arial,Helvetica,sans-serif`;ctx.textBaseline='top';ctx.textAlign=align||'left';ctx.fillText(t||'',x,y,maxW||99999);};
     const line=(x1,y1,x2,y2,col,lw=1)=>{ctx.strokeStyle=col;ctx.lineWidth=lw;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();};
     let y=0;
+    // Full background - dark space theme
+    rect(0,0,W,estimH,'#02020a');
     // Header
     rect(0,0,W,82,'#02020a');
     const grad=ctx.createLinearGradient(0,0,W,0);grad.addColorStop(0,'#2979ff30');grad.addColorStop(1,'transparent');
