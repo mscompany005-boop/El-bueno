@@ -435,7 +435,7 @@ function renderBandeja(){
     const pzas=p.piezas?JSON.parse(typeof p.piezas==='string'?p.piezas:JSON.stringify(p.piezas)):[];
     const piezaInfo=pzas.length?pzas.map(pz=>pz.nombre||'Pieza').join(', '):'';
     const hasStl=p.stl_files&&(typeof p.stl_files==='string'?JSON.parse(p.stl_files):p.stl_files).some(f=>f.data||f.path);
-    return '<div class="pedido-card st-'+(p.status||'pending')+'" onclick="openPedido(''+p.id+'')">'+
+    return '<div class="pedido-card st-'+(p.status||'pending')+'" onclick="openPedido(\''+p.id+'\')">'+
       '<div class="pc-top">'+
         '<div><div class="pc-folio">'+(p.folio||'-')+'</div><div class="pc-fecha">'+fecha+'</div></div>'+
         '<div class="pc-total">'+fm(p.total||0)+'</div>'+
