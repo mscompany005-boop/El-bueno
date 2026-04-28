@@ -218,6 +218,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
     📥 <strong>Pedido del cliente:</strong> <span id="origin-cliente"></span> — <span id="origin-folio-src"></span>
   </div>
 
+  <div id="learn-status" style="display:none;background:#10b98115;border:1px solid #10b98140;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:#6ee7b7;line-height:1.5"></div>
+
   <div class="hero">
     <div class="h-tot" id="h-tot">$0.00</div>
     <div class="h-sub" id="h-sub">— / pza</div>
@@ -304,7 +306,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
   </div>
 
   <div class="config-card">
-    <div class="config-title">⚙️ Parámetros de costos</div>
+    <div class="config-title">🧠 Sistema de aprendizaje</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">Cada vez que corriges los gramos al cotizar un pedido, el sistema registra la diferencia y aplica ese factor automáticamente en los siguientes pedidos del mismo material.</p>
+    <button class="btn b-gray" onclick="mostrarAprendizaje()">📊 Ver estadísticas de aprendizaje</button>
+    <button class="btn b-red" style="margin-top:8px" onclick="if(confirm('¿Borrar todos los datos de aprendizaje?')){localStorage.removeItem('sd_aprendizaje');alert('Datos borrados.');}">🗑️ Resetear aprendizaje</button>
+  </div>
     <div class="fr"><label>Costo filamento / kg ($)</label><input type="number" id="p-fkg" value="350" step="1" oninput="calc()"></div>
     <div class="fr"><label>Tarifa luz ($/kWh)</label><input type="number" id="p-luz" value="1.11" step="0.01" oninput="calc()"></div>
     <div class="fr"><label>Consumo impresora (W)</label><input type="number" id="p-w" value="200" oninput="calc()"></div>
@@ -522,28 +528,55 @@ function cotizarDesdePedido(id){
   const totalGramos=pzas.reduce((s,pz)=>(s+(pz.gramos||0)*(pz.qty||1)),0);
   const totalQty=pzas.reduce((s,pz)=>s+(pz.qty||1),0);
   const piezaNames=pzas.map(pz=>pz.nombre||'Pieza').join(', ');
+  const gramosBase=totalQty>0?Math.round((totalGramos/totalQty)*100)/100:17.42;
+
+  // Apply learned factor if available
+  const material=p.material||'PLA';
+  const infill=p.infill||'0.40';
+  const layer=p.layer||'0.20';
+  const gramosAprendido=calcGramosConAprendizaje(gramosBase, material, infill, layer);
+  const factorAplicado=getFactorAprendido(material, infill, layer);
 
   editingId=null;
   editingPedidoId=id;
+  // Store original estimate for learning
+  window._estimadoBase=gramosBase;
+  window._pedidoMaterial=material;
+  window._pedidoInfill=infill;
+  window._pedidoLayer=layer;
 
   G('fecha').value=new Date().toISOString().split('T')[0];
   G('cliente').value=p.nombre||'';
   G('contacto').value=p.email||p.wa||'';
   G('proyecto').value=p.proyecto||'';
   G('pieza').value=piezaNames.slice(0,60);
-  G('material').value=p.material||'PLA';
+  G('material').value=material;
   G('color').value=p.color||'';
   G('cantidad').value=totalQty||1;
-  G('gramos').value=totalQty>0?Math.round((totalGramos/totalQty)*100)/100:17.42;
+  G('gramos').value=gramosAprendido;
   G('diseno').value=0;
   G('acabado').value=(p.extras&&p.extras.some&&p.extras.some(e=>String(e).toLowerCase().includes('acabado')))?40:0;
   G('envio').value=p.envio_price||0;
   G('descuento').value=0;
-  G('obs').value='Pedido '+p.folio+'. Piezas: '+piezaNames+'. Material: '+(p.material||'PLA')+' '+( p.color||'')+'.';
+  G('obs').value='Pedido '+p.folio+'. Piezas: '+piezaNames+'. Material: '+material+' '+(p.color||'')+'.';
 
   G('origin-info').style.display='block';
   G('origin-cliente').textContent=p.nombre||'Cliente';
   G('origin-folio-src').textContent=p.folio||'sin folio';
+
+  // Show learning status
+  const learnEl=G('learn-status');
+  if(learnEl){
+    if(factorAplicado){
+      const pct=Math.round((1-Math.abs(1-factorAplicado))*100);
+      const muestras=getAprendizaje()[material+'_'+infill+'_'+layer]?.length||0;
+      learnEl.style.display='block';
+      learnEl.innerHTML='🧠 Factor aprendido aplicado ('+muestras+' muestras, precision ~'+pct+'%) - Gramos base: '+gramosBase.toFixed(1)+'g -> Corregido: '+gramosAprendido.toFixed(1)+'g';
+    } else {
+      learnEl.style.display='block';
+      learnEl.innerHTML='🧪 Estimacion base (sin datos de aprendizaje aun para '+material+') - Ajusta los gramos al valor real del slicer y guarda para que el sistema aprenda.';
+    }
+  }
 
   calc();
   goTab('form');
@@ -564,7 +597,77 @@ async function changePedidoStatus(id, status){
   G('pending-count').textContent=pedidos.filter(p=>p.status==='pending').length+' pendientes';
 }
 
-// === FOLIO ===
+// === SISTEMA DE APRENDIZAJE ===
+// Stores: { 'PLA': [{estimado, real, ratio},...], 'ABS': [...], ... }
+// Each time you correct grams, it records the ratio real/estimated
+// calcGramosAprendido() applies the rolling average correction factor
+
+function getAprendizaje(){
+  try{ return JSON.parse(localStorage.getItem('sd_aprendizaje')||'{}'); }
+  catch(e){ return {}; }
+}
+
+function registrarCorreccion(material, infill, layer, gramosEstimado, gramosReal){
+  if(!material||!gramosEstimado||!gramosReal||gramosEstimado<=0) return;
+  const key=material+'_'+infill+'_'+layer;
+  const data=getAprendizaje();
+  if(!data[key]) data[key]=[];
+  const ratio=gramosReal/gramosEstimado;
+  // Keep last 20 corrections per key
+  data[key].push({ratio, estimado:gramosEstimado, real:gramosReal, fecha:new Date().toISOString()});
+  if(data[key].length>20) data[key].shift();
+  localStorage.setItem('sd_aprendizaje',JSON.stringify(data));
+  console.log('Aprendizaje registrado: '+key+' ratio='+ratio.toFixed(3)+' ('+data[key].length+' muestras)');
+}
+
+function getFactorAprendido(material, infill, layer){
+  const data=getAprendizaje();
+  // Try exact key first, then fallback to material only
+  const keys=[
+    material+'_'+infill+'_'+layer,
+    material+'_'+infill+'_0.20',
+    material+'_0.40_0.20',
+    material
+  ];
+  for(const key of keys){
+    const entries=data[key];
+    if(entries&&entries.length>=2){
+      // Weighted average: recent samples count more
+      let weightedSum=0, totalWeight=0;
+      entries.forEach((e,i)=>{
+        const w=i+1; // more recent = higher index = higher weight
+        weightedSum+=e.ratio*w;
+        totalWeight+=w;
+      });
+      return weightedSum/totalWeight;
+    }
+  }
+  return null; // not enough data yet
+}
+
+function getAprendizajeResumen(){
+  const data=getAprendizaje();
+  const keys=Object.keys(data);
+  if(!keys.length) return null;
+  return keys.map(k=>{
+    const entries=data[k];
+    const avg=entries.reduce((s,e)=>s+e.ratio,0)/entries.length;
+    return {key:k, muestras:entries.length, factor:avg.toFixed(3), precision:Math.round((1-Math.abs(1-avg))*100)+'%'};
+  });
+}
+
+function mostrarAprendizaje(){
+  const res=getAprendizajeResumen();
+  if(!res){ alert('Aun no hay correcciones registradas.\n\nCada vez que ajustes los gramos al cotizar desde un pedido, el sistema aprende.'); return; }
+  const txt=res.map(r=>'- '+r.key+': '+r.muestras+' muestras, factor '+r.factor+', precision ~'+r.precision).join('\n');
+  alert('SISTEMA DE APRENDIZAJE\n\n'+txt+'\n\nMientras mas correcciones hagas, mas preciso sera el calculo automatico.');
+}
+
+function calcGramosConAprendizaje(gramosBase, material, infill, layer){
+  const factor=getFactorAprendido(material, infill, layer);
+  if(factor) return gramosBase*factor;
+  return gramosBase;
+}
 function nextFolio(){
   const year=new Date().getFullYear();
   const all=cotizaciones.filter(c=>c.folio&&c.folio.startsWith('SD-'+year));
@@ -698,6 +801,17 @@ async function saveCotizacion(){
     if(idx>=0) cotizaciones[idx]=cot; else cotizaciones.unshift(cot);
     localStorage.setItem('sd_cotizaciones',JSON.stringify(cotizaciones));
     if(SB_URL&&SB_KEY) await sbUpsert(cot);
+    // Register learning correction if came from a pedido
+    if(editingPedidoId && window._estimadoBase && S.gPza>0){
+      registrarCorreccion(
+        window._pedidoMaterial||S.material,
+        window._pedidoInfill||'0.40',
+        window._pedidoLayer||'0.20',
+        window._estimadoBase,
+        S.gPza
+      );
+      window._estimadoBase=null;
+    }
     // If came from pedido, mark as done
     if(editingPedidoId){
       await changePedidoStatus(editingPedidoId,'done');
@@ -847,8 +961,9 @@ async function deleteCot(id){
 }
 
 function resetForm(){
-  editingId=null;editingPedidoId=null;
+  editingId=null;editingPedidoId=null;window._estimadoBase=null;
   G('origin-info').style.display='none';
+  const ls=G('learn-status');if(ls)ls.style.display='none';
   ['cliente','contacto','proyecto','pieza','color'].forEach(id=>G(id).value='');
   G('obs').value='Cotizacion basada en impresion 3D FDM.';
   G('material').value='PLA';G('cantidad').value=1;G('gramos').value=17.42;
@@ -984,7 +1099,7 @@ async function exportIMG(){
   renderHist();
   renderBandeja();
 })();
- </script>
+  </script>
 
 </body>
 </html>
