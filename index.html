@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>SkyDove 3D LAB — Cotizador Pro</title>
+<title>SkyDove 3D LAB - Cotizador Pro</title>
 <style>
 :root{
   --bg:#08090f;--card:#0f1117;--card2:#141720;--border:#1e2535;--border2:#2a3347;
@@ -15,7 +15,7 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;}
 
-/* ═══ HEADER ═══ */
+/* === HEADER === */
 .hdr{background:var(--card);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100;}
 .hdr-logo{width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0;}
 .hdr-logo img{width:100%;height:100%;object-fit:cover;}
@@ -25,16 +25,16 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .hdr-sync{margin-left:8px;background:none;border:1px solid var(--border2);border-radius:8px;color:var(--text2);font-size:11px;padding:4px 10px;cursor:pointer;}
 .hdr-sync:active{opacity:.7;}
 
-/* ═══ TABS ═══ */
+/* === TABS === */
 .tabs{display:flex;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:57px;z-index:99;}
 .tab{flex:1;padding:10px 4px;font-size:11px;font-weight:600;color:var(--text3);text-align:center;cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;transition:.2s;}
 .tab.on{color:var(--blue);border-bottom-color:var(--blue);}
 
-/* ═══ PANELS ═══ */
+/* === PANELS === */
 .pnl{display:none;padding:14px;}
 .pnl.on{display:block;}
 
-/* ═══ BANDEJA DE PEDIDOS ═══ */
+/* === BANDEJA DE PEDIDOS === */
 .bandeja-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
 .bandeja-title{font-size:16px;font-weight:800;}
 .bandeja-count{background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px;}
@@ -45,7 +45,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .filter-btn{flex-shrink:0;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:11px;font-weight:600;padding:5px 12px;cursor:pointer;transition:.2s;}
 .filter-btn.sel{background:var(--blue)20;border-color:var(--blue);color:var(--blue);}
 
-/* ═══ PEDIDO CARD ═══ */
+/* === PEDIDO CARD === */
 .pedido-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:.15s;position:relative;overflow:hidden;}
 .pedido-card:active{transform:scale(.98);}
 .pedido-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px;}
@@ -68,7 +68,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .bandeja-empty .be-icon{font-size:40px;margin-bottom:12px;}
 .bandeja-empty .be-title{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text2);}
 
-/* ═══ FORM ═══ */
+/* === FORM === */
 .folio-badge{background:linear-gradient(135deg,#2563eb15,#2563eb05);border:1px solid #2563eb40;border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
 .folio-num{font-size:22px;font-weight:900;color:var(--blue);letter-spacing:.05em}
 .folio-lbl{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.1em}
@@ -87,14 +87,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .ck{font-size:12px;color:var(--text2);}
 .cv{font-size:13px;font-weight:700;color:var(--cyan);font-family:var(--font-mono);}
 
-/* ═══ HERO ═══ */
+/* === HERO === */
 .hero{background:linear-gradient(135deg,var(--card),var(--card2));border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;text-align:center;}
 .h-tot{font-size:32px;font-weight:900;color:var(--cyan);font-family:var(--font-mono);}
 .h-sub{font-size:12px;color:var(--text2);margin-top:4px;}
 .bw{display:flex;gap:2px;height:8px;border-radius:4px;overflow:hidden;margin:10px 0;}
 .bl{display:flex;gap:6px;font-size:10px;justify-content:center;flex-wrap:wrap;}
 
-/* ═══ BUTTONS ═══ */
+/* === BUTTONS === */
 .b2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
 .btn{display:block;width:100%;padding:12px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;text-align:center;transition:.15s;}
 .btn:active{transform:scale(.97);}
@@ -105,12 +105,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .b-red{background:#991b1b30;border:1px solid var(--red)40;color:var(--red);}
 .b-green{background:var(--green)20;border:1px solid var(--green)40;color:var(--green);}
 
-/* ═══ VISTA PREVIA ═══ */
+/* === VISTA PREVIA === */
 #prev-wrap{overflow-x:hidden;padding:0;background:#f1f5f9;border-radius:10px;}
 #doc-scale{transform-origin:top left;}
 #doc{width:700px;background:#fff;font-family:Helvetica,Arial,sans-serif;color:#1e293b;}
 
-/* ═══ HISTORIAL ═══ */
+/* === HISTORIAL === */
 .hist-search input{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;padding:9px 12px;outline:none;margin-bottom:12px;}
 .cc-top{display:flex;justify-content:space-between;margin-bottom:4px;}
 .cc-folio{font-size:13px;font-weight:700;color:var(--blue)}
@@ -126,7 +126,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .sb-sent{background:var(--blue)18;color:var(--blue);font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px;}
 .hist-empty{text-align:center;padding:40px 20px;color:var(--text3);}
 
-/* ═══ MODAL ═══ */
+/* === MODAL === */
 .modal-overlay{display:none;position:fixed;inset:0;background:#00000090;z-index:500;padding:20px 14px;overflow-y:auto;}
 .modal-overlay.on{display:flex;align-items:flex-start;justify-content:center;}
 .modal{background:var(--card);border:1px solid var(--border2);border-radius:16px;width:100%;max-width:460px;overflow:hidden;}
@@ -142,13 +142,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .active-rejected{background:var(--red)20;border-color:var(--red);color:var(--red);}
 .active-sent{background:var(--blue)20;border-color:var(--blue);color:var(--blue);}
 
-/* ═══ CONFIG ═══ */
+/* === CONFIG === */
 .config-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;}
 .config-title{font-size:12px;font-weight:700;color:var(--text2);letter-spacing:.08em;margin-bottom:10px;}
 .config-card input{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;padding:8px 10px;outline:none;margin-bottom:6px;}
 #db-connected{display:none;color:var(--green);font-size:12px;margin-top:6px;font-weight:600;}
 
-/* ═══ PIEZAS DETAIL ═══ */
+/* === PIEZAS DETAIL === */
 .pieza-row{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;}
 .pieza-row-name{font-size:13px;font-weight:700;margin-bottom:6px;}
 .pieza-row-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;}
@@ -167,7 +167,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
     <div class="hdr-sub">COTIZADOR PRO</div>
   </div>
   <div class="hdr-badge" id="pending-count">0 pendientes</div>
-  <button class="hdr-sync" onclick="syncAll()">⟳ Sync</button>
+  <button class="hdr-sync" onclick="syncAll()">Sync Sync</button>
 </div>
 
 <!-- TABS -->
@@ -179,7 +179,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
   <button class="tab" id="t-cfg" onclick="goTab('cfg')">⚙️</button>
 </div>
 
-<!-- ═══ BANDEJA DE PEDIDOS ═══ -->
+<!-- === BANDEJA DE PEDIDOS === -->
 <div class="pnl on" id="pnl-bandeja">
   <div class="bandeja-header">
     <div><span class="bandeja-title">Bandeja de pedidos</span><span class="bandeja-count" id="bandeja-count">0</span></div>
@@ -201,7 +201,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
   </div>
 </div>
 
-<!-- ═══ COTIZAR ═══ -->
+<!-- === COTIZAR === -->
 <div class="pnl" id="pnl-form">
   <div class="folio-badge">
     <div><div class="folio-lbl">FOLIO AUTOMÁTICO</div><div class="folio-num" id="folio-display">SD-2026-001</div></div>
@@ -209,14 +209,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
   </div>
 
   <div id="origin-info" style="display:none" class="origin-badge">
-    📥 <strong>Pedido del cliente:</strong> <span id="origin-cliente"></span> — <span id="origin-folio-src"></span>
+    📥 <strong>Pedido del cliente:</strong> <span id="origin-cliente"></span> - <span id="origin-folio-src"></span>
   </div>
 
   <div id="learn-status" style="display:none;background:#10b98115;border:1px solid #10b98140;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:#6ee7b7;line-height:1.5"></div>
 
   <div class="hero">
     <div class="h-tot" id="h-tot">$0.00</div>
-    <div class="h-sub" id="h-sub">— / pza</div>
+    <div class="h-sub" id="h-sub">- / pza</div>
     <div class="bw" id="bw"></div>
     <div class="bl" id="bl"></div>
   </div>
@@ -237,8 +237,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
     <div class="fr"><label>Cantidad (pzas)</label><input type="number" id="cantidad" value="1" min="1" oninput="calc()"></div>
     <div class="fr"><label>Gramos / pieza</label><input type="number" id="gramos" value="17.42" step="0.01" oninput="calc()"></div>
     <div class="div"></div>
-    <div class="cr"><span class="ck">Precio / pieza</span><span class="cv" id="d-pp">—</span></div>
-    <div class="cr"><span class="ck">Subtotal impresión</span><span class="cv" id="d-si">—</span></div>
+    <div class="cr"><span class="ck">Precio / pieza</span><span class="cv" id="d-pp">-</span></div>
+    <div class="cr"><span class="ck">Subtotal impresión</span><span class="cv" id="d-si">-</span></div>
   </div>
 
   <div class="fc">
@@ -262,7 +262,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
   <button class="btn b-gray" style="margin-top:8px" onclick="resetForm()">🆕 Nueva cotización</button>
 </div>
 
-<!-- ═══ VISTA PREVIA ═══ -->
+<!-- === VISTA PREVIA === -->
 <div class="pnl" id="pnl-prev">
   <div id="prev-wrap">
     <div id="doc-scale">
@@ -280,13 +280,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
   </div>
 </div>
 
-<!-- ═══ HISTORIAL ═══ -->
+<!-- === HISTORIAL === -->
 <div class="pnl" id="pnl-hist">
   <div class="hist-search"><input type="text" id="search-inp" placeholder="Buscar por cliente, folio o pieza..." oninput="renderHist()"></div>
   <div id="hist-list"></div>
 </div>
 
-<!-- ═══ CONFIG ═══ -->
+<!-- === CONFIG === -->
 <div class="pnl" id="pnl-cfg">
   <div class="config-card">
     <div class="config-title">🗄️ Conectar base de datos (Supabase)</div>
@@ -316,7 +316,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
   </div>
 </div>
 
-<!-- ═══ MODAL DETALLE PEDIDO ═══ -->
+<!-- === MODAL DETALLE PEDIDO === -->
 <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
   <div class="modal">
     <div class="modal-hdr">
@@ -327,7 +327,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
   </div>
 </div>
 
-<!-- ═══ MODAL COTIZACIÓN HISTORIAL ═══ -->
+<!-- === MODAL COTIZACIÓN HISTORIAL === -->
 <div class="modal-overlay" id="modal-overlay2" onclick="closeModal2(event)">
   <div class="modal">
     <div class="modal-hdr">
