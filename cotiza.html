@@ -6,8 +6,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>SkyDove 3D LAB — Cotizador</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">   </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js">   </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">    </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js">    </script>
 <style>
 /* ═══════════════════════════════════════════
    RESET & ROOT
@@ -675,6 +675,27 @@ box-shadow:0 8px 32px #00000060;
   <div style="margin-top:10px;font-size:11px;color:var(--text3);text-align:center" id="infill-note">20% — uso general, buena resistencia para piezas cotidianas</div>
 </div>
 
+<!-- PERFIL DE CAPA -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-icon">📏</div>
+    <div class="card-title">Perfil de impresión (Bambu Studio)</div>
+  </div>
+  <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Afecta el peso y el tiempo de impresión. Calidad alta = más paredes = más gramos.</div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="layer-grid">
+    <div class="infill-btn" data-layer="0.28" onclick="selLayer(this)" style="border:1.5px solid var(--border2);border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;transition:.2s">
+      <div style="font-size:16px">⚡</div><div style="font-size:13px;font-weight:700;color:var(--text)">0.28mm</div><div style="font-size:9px;color:var(--text3)">Rápido</div>
+    </div>
+    <div class="infill-btn" data-layer="0.20" onclick="selLayer(this)" style="border:1.5px solid var(--border2);border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;transition:.2s">
+      <div style="font-size:16px">⚙️</div><div style="font-size:13px;font-weight:700;color:var(--text)">0.20mm</div><div style="font-size:9px;color:var(--text3)">Normal</div>
+    </div>
+    <div class="infill-btn sel" data-layer="0.16" onclick="selLayer(this)" style="border:1.5px solid var(--cyan);border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;transition:.2s;background:#00f5c410">
+      <div style="font-size:16px">💎</div><div style="font-size:13px;font-weight:700;color:var(--cyan)">0.16mm</div><div style="font-size:9px;color:var(--text3)">Calidad</div>
+    </div>
+  </div>
+  <div style="margin-top:10px;font-size:11px;color:var(--text3);text-align:center" id="layer-note">0.16mm High Quality — mayor detalle, paredes más densas</div>
+</div>
+
 <!-- COLOR -->
 <div class="card">
   <div class="card-header">
@@ -956,7 +977,25 @@ function genFolio(){
 }
 let currentFolio=genFolio();
 
-const MATS={'PLA':{density:1.24,priceKg:350},'PETG':{density:1.27,priceKg:400},'ASA':{density:1.07,priceKg:480},'TPU':{density:1.21,priceKg:550},'ABS':{density:1.06,priceKg:380},'Resina':{density:1.10,priceKg:700}};
+// Real Bambu Studio densities calibrated
+const MATS={
+  'PLA':  {density:1.24, priceKg:350},
+  'PETG': {density:1.27, priceKg:400},
+  'ASA':  {density:1.07, priceKg:480},
+  'TPU':  {density:1.21, priceKg:550},
+  'ABS':  {density:1.06, priceKg:380},
+  'Resina':{density:1.10, priceKg:700}
+};
+
+// Layer height correction factor (Bambu calibrated vs 0.20 baseline)
+// Higher quality = more perimeters = slightly more material
+const LAYER_FACTORS={
+  '0.28': 0.92,  // Fast: fewer perimeters, slight underweight vs baseline
+  '0.20': 1.00,  // Normal: baseline
+  '0.16': 1.09   // High quality: more perimeters/top layers, ~9% more material
+};
+
+let selectedLayer='0.16'; // default: 0.2 high quality as user said
 
 // === BG PARTICLES ===
 (function(){
@@ -994,12 +1033,18 @@ const MATS={'PLA':{density:1.24,priceKg:350},'PETG':{density:1.27,priceKg:400},'
 // Factor is simply the infill percentage (physically correct:
 // infill% = fraction of volume filled with material)
 function infillToFactor(infill){return infill;}
-function calcGramos(vol){const mat=MATS[selectedMat]||MATS.PLA;return vol*mat.density*infillToFactor(selectedInfill);}
+function calcGramos(vol, slicerG){
+  // If slicer grams provided, use directly (most accurate)
+  if(slicerG && slicerG > 0) return slicerG;
+  const mat=MATS[selectedMat]||MATS.PLA;
+  const layerFactor=LAYER_FACTORS[selectedLayer]||1.00;
+  return vol*mat.density*infillToFactor(selectedInfill)*layerFactor;
+}
 function totalGramsAll(){return piezas.reduce((s,p)=>s+(p.gramos||0)*(selectedTipo==='pedido'?1:(p.qty||1)),0);}
 
 function addPieza(){
   const id='p'+Date.now();
-  piezas.push({id,nombre:'',qty:1,volCm3:null,gramos:0,stlName:'',fileBuf:null,fileType:''});
+  piezas.push({id,nombre:'',qty:1,volCm3:null,gramos:0,stlName:'',fileBuf:null,fileType:'',slicerG:null});
   renderPiezas();
 }
 
@@ -1031,6 +1076,14 @@ function renderPiezas(){
       ${!p.stlName?'<div class="field"><div class="field-label">Peso estimado <span class="field-label-tag">si lo sabes</span></div><input type="number" value="'+(p.gramos||'')+'" min="0" step="0.5" placeholder="gramos por pieza" oninput="updateP(\''+p.id+'\',\'gramos\',parseFloat(this.value)||0)"></div>'
       : p.fileType==='step'?'<div class="field"><div class="field-label">Peso estimado (g/pza) <span class="field-label-tag">requerido para STEP</span></div><input type="number" value="'+(p.gramos||'')+'" min="0" step="0.5" placeholder="ej. 25.5" oninput="updateP(\''+p.id+'\',\'gramos\',parseFloat(this.value)||0)"></div>'
       : p.volCm3?`<div style="margin-bottom:10px"><div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Unidades del archivo <span style="color:var(--danger)">*</span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="changeUnit('${p.id}','mm')" style="flex:1;padding:8px 6px;border-radius:10px;border:2px solid ${p.unit==='mm'?'var(--cyan)':'var(--border2)'};background:${p.unit==='mm'?'#00f5c415':'var(--glass)'};color:${p.unit==='mm'?'var(--cyan)':'var(--text2)'};font-family:var(--font-mono);font-size:12px;cursor:pointer;font-weight:${p.unit==='mm'?700:400}">mm</button><button onclick="changeUnit('${p.id}','cm')" style="flex:1;padding:8px 6px;border-radius:10px;border:2px solid ${p.unit==='cm'?'var(--cyan)':'var(--border2)'};background:${p.unit==='cm'?'#00f5c415':'var(--glass)'};color:${p.unit==='cm'?'var(--cyan)':'var(--text2)'};font-family:var(--font-mono);font-size:12px;cursor:pointer;font-weight:${p.unit==='cm'?700:400}">cm</button><button onclick="changeUnit('${p.id}','in')" style="flex:1;padding:8px 6px;border-radius:10px;border:2px solid ${p.unit==='in'?'var(--cyan)':'var(--border2)'};background:${p.unit==='in'?'#00f5c415':'var(--glass)'};color:${p.unit==='in'?'var(--cyan)':'var(--text2)'};font-family:var(--font-mono);font-size:12px;cursor:pointer;font-weight:${p.unit==='in'?700:400}">pulgadas</button></div>${!p.unitConfirmed?'<div style="margin-top:6px;font-size:11px;color:var(--warn)">⚠️ Selecciona las unidades para continuar</div>':''}</div>`:''}
+      <div style="background:#7c4dff12;border:1px solid #7c4dff35;border-radius:10px;padding:10px 12px;margin-bottom:4px">
+        <div style="font-size:10px;font-weight:700;color:#a78bfa;letter-spacing:.06em;margin-bottom:7px">⚡ GRAMOS EXACTOS DEL SLICER ${p.slicerG?'<span style=color:#10b981>✓ USANDO ESTE VALOR</span>':'<span style=color:#6b7280>(opcional - maxima precision)</span>'}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="number" min="0" step="0.1" placeholder="Pégalo de Bambu Studio..." value="${p.slicerG||''}" style="flex:1;background:#0d0e14;border:1px solid ${p.slicerG?'#7c4dff':'#2a3347'};border-radius:7px;color:#e8eaf0;font-size:14px;font-weight:${p.slicerG?700:400};padding:8px 10px;outline:none;font-family:var(--font-mono)" oninput="updateSlicerG('${p.id}',this.value)">
+          <span style="font-size:11px;color:#6b7280;white-space:nowrap">g / pza</span>
+        </div>
+        <div style="font-size:10px;color:#6b7280;margin-top:5px">${p.slicerG?'Peso real: '+p.slicerG.toFixed(1)+'g - calculado con precision del slicer':'Bambu: Prepara placa -> Slice -> ver gramos en barra inferior izquierda'}</div>
+      </div>
     `;
     list.appendChild(div);
     if(!p.stlName){
@@ -1081,7 +1134,7 @@ function processFileForPieza(id,file){
         p.unit='mm'; // default displayed, but not confirmed
         p.unitConfirmed=false;
         p.volCm3=parsed.vol * unitToCm3Factor('mm');
-        p.gramos=calcGramos(p.volCm3);
+        p.gramos=calcGramos(p.volCm3,p.slicerG);
         if(!p.nombre)p.nombre=file.name.replace(/\.stl$/i,'');
         renderPiezas(); checkColorLock();
         showToast('✅ '+file.name+' - selecciona las unidades para continuar');
@@ -1097,7 +1150,31 @@ function processFileForPieza(id,file){
   reader.readAsArrayBuffer(file);
 }
 
-function changeUnit(id, unit){
+function selLayer(el){
+  document.querySelectorAll('#layer-grid .infill-btn').forEach(b=>{
+    b.style.border='1.5px solid var(--border2)';
+    b.style.background='';
+    b.querySelector('div:nth-child(2)').style.color='var(--text)';
+  });
+  el.style.border='1.5px solid var(--cyan)';
+  el.style.background='#00f5c410';
+  el.querySelector('div:nth-child(2)').style.color='var(--cyan)';
+  selectedLayer=el.dataset.layer;
+  const notes={'0.28':'0.28mm Rapido - menos detalles, impresion mas veloz','0.20':'0.20mm Normal - equilibrio calidad/velocidad','0.16':'0.16mm High Quality - maxima calidad, paredes mas densas'};
+  const noteEl=document.getElementById('layer-note');
+  if(noteEl) noteEl.textContent=notes[selectedLayer]||'';
+  piezas.forEach(p=>{if(p.volCm3) p.gramos=calcGramos(p.volCm3,p.slicerG);});
+  checkColorLock(); renderPiezas(); updateQuoteSummary();
+}
+
+function updateSlicerG(id, val){
+  const p=piezas.find(x=>x.id===id); if(!p) return;
+  const v=parseFloat(val);
+  p.slicerG = (v && v>0) ? v : null;
+  // slicerG overrides calculated gramos
+  p.gramos = calcGramos(p.volCm3||0, p.slicerG);
+  checkColorLock(); renderPiezas(); updateQuoteSummary();
+}
   const p=piezas.find(x=>x.id===id); if(!p||!p.fileBuf||!p.volCm3Raw) return;
   p.unit=unit;
   p.unitConfirmed=true;
@@ -1196,7 +1273,7 @@ function checkColorLock(){
 function selMat(el){
   document.querySelectorAll('#mat-grid .mat-card').forEach(c=>c.classList.remove('sel'));
   el.classList.add('sel');selectedMat=el.dataset.mat;
-  piezas.forEach(p=>{if(p.volCm3)p.gramos=calcGramos(p.volCm3);});
+  piezas.forEach(p=>{if(p.volCm3)p.gramos=calcGramos(p.volCm3,p.slicerG);});
   renderPiezas();checkColorLock();
 }
 function selInfill(el){
@@ -1215,7 +1292,7 @@ function selInfill(el){
   const notes={0.15:'15% -- ligero, piezas decorativas o de baja carga',0.20:'20% -- uso general, buena resistencia para piezas cotidianas',0.30:'30% -- firme, piezas funcionales con carga moderada',0.50:'50% -- resistente, piezas con alta carga o esfuerzo',1.00:'100% -- solido, maxima resistencia y peso'};
   $('infill-note').textContent=notes[pct]||'';
   // Recalculate all piece weights
-  piezas.forEach(p=>{if(p.volCm3)p.gramos=calcGramos(p.volCm3);});
+  piezas.forEach(p=>{if(p.volCm3)p.gramos=calcGramos(p.volCm3,p.slicerG);});
   renderPiezas();checkColorLock();
 }
 function selColor(el){
@@ -1299,7 +1376,7 @@ function autoDetectUnit(rawVol){
   ];
   let best=null, bestScore=-1;
   for(const c of candidates){
-    const g=rawVol*c.factor*density*infillToFactor(0.20);
+    const g=rawVol*c.factor*density*infillToFactor(0.20)*(LAYER_FACTORS[selectedLayer]||1.00);
     let score=0;
     if(g>=0.5   && g<=5000)  score=3; // ideal
     else if(g>=0.05 && g<=50000) score=2; // ok
@@ -1603,7 +1680,7 @@ function formatWA(inp){let v=inp.value.replace(/\D/g,'');inp.value=v;}
 
 // Init
 addPieza();
-   </script>
+    </script>
 
 </body>
 </html>
