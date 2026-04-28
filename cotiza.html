@@ -990,12 +990,10 @@ const MATS={'PLA':{density:1.24,priceKg:350},'PETG':{density:1.27,priceKg:400},'
 // Walls + top/bottom always ~30% of volume regardless of infill.
 // Interior is infill% of remaining 70%.
 // So total = 0.30 + (infill * 0.70)
-// infillToFactor: converts infill % to fraction of solid volume actually printed.
-// Calibrated: at 20% infill, real print = ~61% of solid volume.
-// Walls + top/bottom contribute ~48% fixed, infill adds the rest proportionally.
-// Formula: walls_base(0.48) + infill * (1 - 0.48)
-// At 15%->0.558, 20%->0.584, 30%->0.634, 50%->0.74, 100%->1.0
-function infillToFactor(infill){return 0.48+(infill*0.52);}
+// infillToFactor: calibrated from real print - 40% infill gave 68.28g
+// Factor is simply the infill percentage (physically correct:
+// infill% = fraction of volume filled with material)
+function infillToFactor(infill){return infill;}
 function calcGramos(vol){const mat=MATS[selectedMat]||MATS.PLA;return vol*mat.density*infillToFactor(selectedInfill);}
 function totalGramsAll(){return piezas.reduce((s,p)=>s+(p.gramos||0)*(selectedTipo==='pedido'?1:(p.qty||1)),0);}
 
