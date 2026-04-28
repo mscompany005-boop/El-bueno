@@ -1171,10 +1171,11 @@ function updateSlicerG(id, val){
   const p=piezas.find(x=>x.id===id); if(!p) return;
   const v=parseFloat(val);
   p.slicerG = (v && v>0) ? v : null;
-  // slicerG overrides calculated gramos
   p.gramos = calcGramos(p.volCm3||0, p.slicerG);
   checkColorLock(); renderPiezas(); updateQuoteSummary();
 }
+
+function changeUnit(id, unit){
   const p=piezas.find(x=>x.id===id); if(!p||!p.fileBuf||!p.volCm3Raw) return;
   p.unit=unit;
   p.unitConfirmed=true;
