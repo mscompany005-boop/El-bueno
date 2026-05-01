@@ -93,8 +93,22 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min
 .sbadge.s-sent{background:#2563eb18;color:var(--blue);}
 .pieza-row{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;}
 .pieza-dl{display:block;width:100%;margin-top:6px;background:#7c4dff15;border:1px solid #7c4dff40;border-radius:8px;color:#a78bfa;font-size:11px;font-weight:700;padding:6px;text-align:center;cursor:pointer;}
-.hist-empty{text-align:center;padding:40px 20px;color:var(--text3);}
+
+.bw{display:flex;height:8px;border-radius:4px;overflow:hidden;margin:10px 0;}
+.bl{display:flex;gap:8px;font-size:10px;color:var(–text2);justify-content:center;flex-wrap:wrap;margin-top:4px;}
+.bl span{display:flex;align-items:center;gap:3px}
+.bl i{display:inline-block;width:8px;height:8px;border-radius:2px}
+.cr{display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(–border);margin-top:4px;}
+.ck{font-size:11px;color:var(–text2)}
+.cv{font-size:13px;font-weight:700;color:var(–cyan);font-family:monospace}
+.b2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.btn-teal{background:var(–cyan);color:#000}
+#prev-wrap{overflow-x:hidden;background:#f1f5f9;border-radius:10px;padding:0;margin-bottom:12px}
+#doc-scale{transform-origin:top left}
+#doc{width:700px;background:#fff;font-family:Helvetica,Arial,sans-serif;color:#1e293b}
+.hist-empty{text-align:center;padding:40px 20px;color:var(–text3);}
 </style>
+
 </head>
 <body>
 
@@ -113,6 +127,7 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min
 <div class="tabs">
   <button class="tab on" id="t-bandeja">Pedidos</button>
   <button class="tab" id="t-form">Cotizar</button>
+  <button class="tab" id="t-prev">Vista</button>
   <button class="tab" id="t-hist">Historial</button>
   <button class="tab" id="t-cfg">Config</button>
 </div>
@@ -154,6 +169,8 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min
   <div class="hero-box">
     <div class="hero-total" id="h-tot">$0.00</div>
     <div class="hero-sub" id="h-sub">-- / pza</div>
+    <div class="bw" id="bw"></div>
+    <div class="bl" id="bl"></div>
   </div>
   <div class="card-box">
     <div class="card-title">Datos del cliente</div>
@@ -169,6 +186,8 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min
     <div class="field-row"><label>Color</label><input type="text" id="color" placeholder="Color"></div>
     <div class="field-row"><label>Cantidad (pzas)</label><input type="number" id="cantidad" value="1" min="1"></div>
     <div class="field-row"><label>Gramos / pieza</label><input type="number" id="gramos" value="17.42" step="0.01"></div>
+    <div class="cr"><span class="ck">Precio / pieza</span><span class="cv" id="d-pp">--</span></div>
+    <div class="cr"><span class="ck">Subtotal impresion</span><span class="cv" id="d-si">--</span></div>
   </div>
   <div class="card-box">
     <div class="card-title">Cargos adicionales</div>
@@ -181,9 +200,21 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min
     <div class="card-title">Observaciones</div>
     <textarea id="obs" rows="2" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:13px;padding:8px 10px;outline:none;resize:vertical">Cotizacion basada en impresion 3D FDM.</textarea>
   </div>
-  <button class="btn btn-cyan" id="btn-save">Guardar cotizacion</button>
+  <div class="b2">
+    <button class="btn btn-blue" id="btn-vista">Ver cotizacion</button>
+    <button class="btn btn-cyan" id="btn-save">Guardar</button>
+  </div>
   <button class="btn btn-wa" id="btn-copy">Copiar para WhatsApp</button>
   <button class="btn btn-gray" id="btn-reset">Nueva cotizacion</button>
+</div>
+
+<div class="pnl" id="pnl-prev">
+  <div id="prev-wrap"><div id="doc-scale"><div id="doc"></div></div></div>
+  <div class="b2">
+    <button class="btn btn-blue" id="btn-pdf">Descargar PDF</button>
+    <button class="btn btn-gray" id="btn-img">Descargar imagen</button>
+  </div>
+  <button class="btn btn-gray" id="btn-edit">Volver a editar</button>
 </div>
 
 <div class="pnl" id="pnl-hist">
@@ -253,7 +284,7 @@ function GS(id){ var v = G(id); return v ? (v.value||'').trim() : ''; }
 function fm(v){ return '$' + Number(v).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2}); }
 
 function goTab(t) {
-  ['bandeja','form','hist','cfg'].forEach(function(id) {
+  ['bandeja','form','prev','hist','cfg'].forEach(function(id) {
     var pnl = G('pnl-' + id);
     var tab = G('t-' + id);
     if (pnl) pnl.classList.toggle('on', id === t);
@@ -261,6 +292,7 @@ function goTab(t) {
   });
   if (t === 'hist') { loadHist().then(renderHist); }
   if (t === 'bandeja') renderBandeja();
+  if (t === 'prev') { renderDoc(); setTimeout(scaleDoc, 50); }
 }
 
 function syncAll() {
@@ -593,6 +625,28 @@ function calc() {
   };
   G('h-tot').innerHTML = fm(total) + ' <span style="font-size:15px;color:#94a3b8">MXN</span>';
   G('h-sub').textContent = fm(pPza) + ' / pza, ' + qty + ' pza';
+  G('d-pp').textContent = fm(pPza);
+  G('d-si').textContent = fm(subImp);
+
+  // Render cost bars
+  var fTot = gT*fG, eTot = gT*eG, cTot = gT*cG, dTot = gT*dG;
+  var util = total - (fTot+eTot+cTot+dTot);
+  var segs = [
+    {v:fTot,col:'#2563eb',n:'Material'},
+    {v:eTot,col:'#7c4dff',n:'Luz'},
+    {v:cTot,col:'#f59e0b',n:'Cama'},
+    {v:dTot,col:'#ef4444',n:'Desgaste'},
+    {v:util>0?util:0,col:'#10b981',n:'Ganancia'}
+  ];
+  var tb = segs.reduce(function(a,b){ return a+b.v; }, 0);
+  if (tb > 0) {
+    G('bw').innerHTML = segs.map(function(s){
+      return '<div style="flex:'+s.v/tb+';background:'+s.col+'"></div>';
+    }).join('');
+    G('bl').innerHTML = segs.map(function(s){
+      return '<span><i style="background:'+s.col+'"></i>'+s.n+'</span>';
+    }).join('');
+  }
   if (!editingId) G('folio-display').textContent = nextFolio();
 }
 
@@ -714,6 +768,161 @@ function copyTxt() {
   }
 }
 
+function renderDoc() {
+  var folio = editingId ? ((cotizaciones.find(function(x){ return x.id === editingId; }) || {}).folio || G('folio-display').textContent) : G('folio-display').textContent;
+  function safe(v){ return (v===null||v===undefined||v==='') ? '-' : String(v); }
+  G('doc').innerHTML =
+    '<div style="background:#0d1117;padding:18px 24px;display:flex;align-items:center;gap:14px">' +
+      '<div style="width:54px;height:54px;border-radius:50%;background:#2563eb;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:22px">SD</div>' +
+      '<div><div style="font-size:22px;font-weight:900;color:#fff">SkyDove 3D LAB</div><div style="font-size:11px;color:#94a3b8">Cotizacion de impresion 3D</div></div>' +
+      '<div style="margin-left:auto;text-align:right"><div style="font-size:10px;color:#64748b">Folio</div><div style="font-size:14px;font-weight:800;color:#2563eb;font-family:monospace">' + folio + '</div><div style="font-size:10px;color:#64748b">' + (S.fecha||'-') + '</div></div>' +
+    '</div>' +
+    '<div style="background:#f8fafc;padding:14px 24px;border-bottom:2px solid #e2e8f0;display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+      '<div><div style="font-size:10px;color:#94a3b8;font-weight:700">CLIENTE</div><div style="font-size:14px;font-weight:700;color:#1e293b">' + safe(S.cliente) + '</div><div style="font-size:11px;color:#64748b">' + safe(S.contacto) + '</div></div>' +
+      '<div><div style="font-size:10px;color:#94a3b8;font-weight:700">PROYECTO</div><div style="font-size:12px;color:#334155">' + safe(S.proyecto) + '</div></div>' +
+    '</div>' +
+    '<table style="width:100%;border-collapse:collapse;font-size:11px">' +
+      '<tr style="background:#1a1a2e;color:#fff"><th style="padding:10px 14px;text-align:left">Concepto</th><th style="padding:10px;text-align:left">Material</th><th style="padding:10px;text-align:center">Cant</th><th style="padding:10px;text-align:right">g/pza</th><th style="padding:10px 14px;text-align:right">Precio</th></tr>' +
+      '<tr style="background:#fff;border-bottom:1px solid #e2e8f0"><td style="padding:12px 14px;font-weight:700">' + safe(S.pieza) + '</td><td style="padding:12px;color:#64748b">' + safe(S.material) + (S.color?' / '+S.color:'') + '</td><td style="padding:12px;text-align:center">' + S.qty + '</td><td style="padding:12px;text-align:right;font-family:monospace">' + Number(S.gPza).toFixed(2) + 'g</td><td style="padding:12px 14px;text-align:right;font-weight:700;color:#2563eb;font-family:monospace">' + fm(S.pPza) + '</td></tr>' +
+    '</table>' +
+    '<div style="padding:14px 24px;background:#f8fafc">' +
+      '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px"><span>Subtotal impresion</span><span style="font-family:monospace">' + fm(S.subImp) + '</span></div>' +
+      (S.dis ? '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px"><span>Diseno / Modelado</span><span style="font-family:monospace">+' + fm(S.dis) + '</span></div>' : '') +
+      (S.aca ? '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px"><span>Acabado / Armado</span><span style="font-family:monospace">+' + fm(S.aca) + '</span></div>' : '') +
+      (S.env ? '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px"><span>Envio / Entrega</span><span style="font-family:monospace">+' + fm(S.env) + '</span></div>' : '') +
+      (S.des ? '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px"><span>Descuento</span><span style="font-family:monospace;color:#ef4444">-' + fm(S.des) + '</span></div>' : '') +
+      '<div style="display:flex;justify-content:space-between;padding:12px 0 4px;font-size:17px;font-weight:800;border-top:2px solid #e2e8f0;margin-top:6px"><span>TOTAL</span><span style="color:#10b981;font-family:monospace">' + fm(S.total) + '</span></div>' +
+      '<div style="font-size:10px;color:#94a3b8;text-align:right;margin-top:2px">MXN, IVA no incluido</div>' +
+    '</div>' +
+    '<div style="padding:12px 24px;background:#fff;font-size:11px;color:#64748b;border-top:1px solid #e2e8f0;font-style:italic">' + (S.obs||'') + '</div>' +
+    '<div style="background:#0d1117;padding:12px 24px;text-align:center;font-size:10px;color:#64748b">Gracias por cotizar con SkyDove 3D LAB - Valido 7 dias</div>';
+}
+
+function scaleDoc() {
+  var wrap = G('prev-wrap');
+  var docEl = G('doc');
+  if (!wrap || !docEl) return;
+  var scale = (wrap.clientWidth - 0) / 700;
+  var sc = G('doc-scale');
+  sc.style.width = '700px';
+  sc.style.transform = 'scale(' + scale + ')';
+  sc.style.transformOrigin = 'top left';
+  wrap.style.height = (docEl.offsetHeight * scale) + 'px';
+}
+
+window.addEventListener('resize', function(){
+  if (G('pnl-prev') && G('pnl-prev').classList.contains('on')) scaleDoc();
+});
+
+function drawCanvas(scale) {
+  return new Promise(function(resolve) {
+    var docEl = G('doc');
+    var W = 700, H = docEl.scrollHeight || docEl.offsetHeight || 800;
+    var cv = document.createElement('canvas');
+    cv.width = W * scale;
+    cv.height = H * scale;
+    var ctx = cv.getContext('2d');
+    ctx.scale(scale, scale);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, W, H);
+    var folio = G('folio-display').textContent;
+    var y = 0;
+    function r(x,yy,w,h,fill){ ctx.fillStyle = fill; ctx.fillRect(x,yy,w,h); }
+    function t(text,x,yy,col,sz,bold,align){ ctx.fillStyle = col; ctx.font = (bold?'700 ':'400 ') + sz + 'px Helvetica,Arial,sans-serif'; ctx.textBaseline = 'top'; ctx.textAlign = align||'left'; ctx.fillText(text||'', x, yy); }
+    function safe(v){ return (v===null||v===undefined||v==='') ? '-' : String(v); }
+    r(0, 0, W, 88, '#0d1117');
+    ctx.fillStyle = '#2563eb';
+    ctx.beginPath();
+    ctx.arc(48, 44, 26, 0, Math.PI*2);
+    ctx.fill();
+    t('SD', 48, 32, '#fff', 22, true, 'center');
+    t('SkyDove 3D LAB', 86, 18, '#fff', 22, true);
+    t('Cotizacion de impresion 3D', 86, 48, '#94a3b8', 11, false);
+    t('Folio: ' + folio, W-14, 18, '#2563eb', 12, true, 'right');
+    t(S.fecha||'-', W-14, 38, '#94a3b8', 10, false, 'right');
+    y = 88;
+    r(0, y, W, 56, '#f8fafc');
+    t('CLIENTE', 14, y+8, '#94a3b8', 9, true);
+    t(safe(S.cliente), 14, y+22, '#1e293b', 14, true);
+    t(safe(S.contacto), 14, y+40, '#64748b', 10, false);
+    t('PROYECTO', W/2+10, y+8, '#94a3b8', 9, true);
+    t(safe(S.proyecto), W/2+10, y+22, '#334155', 11, false);
+    y += 56;
+    r(0, y, W, 24, '#1a1a2e');
+    var hdrs = ['Concepto','Material','Cant','g/pza','Precio'];
+    var xs = [14, 200, 350, 430, 540];
+    var als = ['left','left','center','right','right'];
+    hdrs.forEach(function(h,i){ t(h, xs[i], y+6, '#fff', 10, true, als[i]); });
+    y += 24;
+    r(0, y, W, 28, '#fff');
+    var row = [safe(S.pieza), safe(S.material) + (S.color?' / '+S.color:''), String(S.qty), Number(S.gPza).toFixed(2)+'g', fm(S.pPza)];
+    row.forEach(function(v,i){ t(v, xs[i], y+8, '#1e293b', 11, i===0, als[i]); });
+    y += 28;
+    var charges = [['Subtotal impresion', S.subImp, false]];
+    if (S.dis) charges.push(['Diseno', S.dis, false]);
+    if (S.aca) charges.push(['Acabado', S.aca, false]);
+    if (S.env) charges.push(['Envio', S.env, false]);
+    if (S.des) charges.push(['Descuento', -S.des, false]);
+    charges.push(['TOTAL', S.total, true]);
+    charges.forEach(function(ch){
+      r(0, y, W, 22, ch[2]?'#d1fae5':'#f8fafc');
+      t(ch[0], 14, y+5, ch[2]?'#065f46':'#1e293b', ch[2]?13:11, ch[2], 'left');
+      t(fm(ch[1]), W-14, y+5, ch[2]?'#065f46':'#334155', ch[2]?13:11, ch[2], 'right');
+      y += 22;
+    });
+    if (S.obs) {
+      r(0, y, W, 30, '#fff');
+      t(S.obs, 14, y+9, '#64748b', 10, false);
+      y += 30;
+    }
+    r(0, y, W, 32, '#0d1117');
+    t('Gracias por cotizar con SkyDove 3D LAB', W/2, y+10, '#fff', 11, true, 'center');
+    resolve(cv);
+  });
+}
+
+function exportPDF() {
+  var btn = G('btn-pdf');
+  btn.textContent = 'Generando...';
+  btn.disabled = true;
+  drawCanvas(2).then(function(cv) {
+    var img = cv.toDataURL('image/jpeg', 0.92);
+    if (window.jspdf) {
+      var pdf = new window.jspdf.jsPDF({unit:'mm', format:'a4'});
+      var ih = (cv.height/cv.width) * 210;
+      pdf.addImage(img, 'JPEG', 0, 0, 210, Math.min(ih, 297));
+      pdf.save('Cotizacion_' + G('folio-display').textContent + '.pdf');
+    } else {
+      var a = document.createElement('a');
+      a.href = img;
+      a.download = 'Cotizacion_' + G('folio-display').textContent + '.jpg';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+    btn.textContent = 'Descargar PDF';
+    btn.disabled = false;
+  });
+}
+
+function exportIMG() {
+  var btn = G('btn-img');
+  btn.textContent = 'Generando...';
+  btn.disabled = true;
+  drawCanvas(3).then(function(cv) {
+    var a = document.createElement('a');
+    a.href = cv.toDataURL('image/png');
+    a.download = 'Cotizacion_' + G('folio-display').textContent + '.png';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    btn.textContent = 'Descargar imagen';
+    btn.disabled = false;
+  });
+}
+
+(function(){ var s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'; document.head.appendChild(s); })();
+
 // ============ INIT ============
 window.addEventListener('DOMContentLoaded', function() {
   // Set initial values
@@ -752,6 +961,11 @@ window.addEventListener('DOMContentLoaded', function() {
   G('btn-save').addEventListener('click', saveCotizacion);
   G('btn-copy').addEventListener('click', copyTxt);
   G('btn-reset').addEventListener('click', resetForm);
+  G('btn-vista').addEventListener('click', function(){ goTab('prev'); });
+  G('btn-pdf').addEventListener('click', exportPDF);
+  G('btn-img').addEventListener('click', exportIMG);
+  G('btn-edit').addEventListener('click', function(){ goTab('form'); });
+  G('t-prev').addEventListener('click', function(){ goTab('prev'); });
   G('btn-stats').addEventListener('click', mostrarAprendizaje);
   G('btn-reset-learn').addEventListener('click', function() {
     if (confirm('Borrar todos los datos de aprendizaje?')) {
